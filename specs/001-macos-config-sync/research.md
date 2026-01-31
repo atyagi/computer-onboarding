@@ -5,14 +5,14 @@
 
 ## Technology Decisions
 
-### Language Choice: Shell + Python 3.13
+### Language Choice: Shell + Python 3.14
 
-**Decision**: Use bash scripts as the primary interface with Python 3.13 for complex logic
+**Decision**: Use bash scripts as the primary interface with Python 3.14 for complex logic
 
 **Rationale**:
 - Simplest approach that directly wraps existing tools (brew, mas, defaults)
 - No compilation required - immediate execution and modification
-- Python 3.13 provides latest performance improvements and language features
+- Python 3.14 provides latest performance improvements and language features
 - Python provides structured data handling (YAML parsing, JSON output)
 - Most portable for the target audience (developers with Python already installed)
 - Aligns with Constitution Principle II (Simplicity First)
@@ -35,7 +35,7 @@
 - Active development by Astral (same team as Ruff)
 
 **Implementation**:
-- `.python-version` file specifies Python 3.13
+- `.python-version` file specifies Python 3.14
 - `pyproject.toml` defines dependencies
 - `uv.lock` ensures reproducible installs
 - `uv run` executes commands in the project environment

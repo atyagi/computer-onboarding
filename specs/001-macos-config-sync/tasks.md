@@ -19,7 +19,7 @@
 
 **Purpose**: Initialize Python project with uv, create package structure
 
-- [ ] T001 Create `.python-version` file with Python 3.13
+- [ ] T001 Create `.python-version` file with Python 3.14
 - [ ] T002 Create `pyproject.toml` with project metadata and dependencies (PyYAML, jsonschema, pytest, ruff, bats)
 - [ ] T003 Run `uv sync` to generate `uv.lock` and install dependencies
 - [ ] T004 [P] Create package structure: `src/macsetup/__init__.py`, `src/macsetup/__main__.py`

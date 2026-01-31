@@ -10,7 +10,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/atyagi/computer-onboarding.git
 cd computer-onboarding
 
-# Install dependencies (uv will automatically install Python 3.13 if needed)
+# Install dependencies (uv will automatically install Python 3.14 if needed)
 uv sync
 
 # Install (adds macsetup to PATH)
@@ -19,7 +19,7 @@ uv sync
 
 Prerequisites:
 - macOS 12 (Monterey) or later
-- uv (installs Python 3.13 automatically)
+- uv (installs Python 3.14 automatically)
 - Homebrew (installed automatically if missing)
 
 ## Capture Your Current Machine

@@ -8,7 +8,7 @@ macOS Configuration Sync CLI - A tool to capture, store, and restore macOS machi
 
 ## Active Technologies
 
-- **Language**: Python 3.13 with bash wrapper scripts
+- **Language**: Python 3.14 with bash wrapper scripts
 - **Package Manager**: uv (Python version + dependency management)
 - **Dependencies**: PyYAML (config parsing), jsonschema (validation), argparse (CLI - stdlib)
 - **Testing**: pytest (Python), bats (bash scripts)

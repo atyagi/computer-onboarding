@@ -9,7 +9,7 @@ A CLI tool that captures, stores, and restores macOS machine configurations incl
 
 ## Technical Context
 
-**Language/Version**: Python 3.13 with bash wrapper scripts
+**Language/Version**: Python 3.14 with bash wrapper scripts
 **Package Manager**: uv (dependency management and Python version management)
 **Primary Dependencies**: PyYAML (config parsing), jsonschema (validation), argparse (CLI - stdlib)
 **Storage**: YAML files in user-specified directory (Git repo recommended)
@@ -57,7 +57,7 @@ specs/[###-feature]/
 ```text
 pyproject.toml                # Project metadata and dependencies (uv/PEP 621)
 uv.lock                       # Locked dependencies for reproducibility
-.python-version               # Python 3.13 (used by uv)
+.python-version               # Python 3.14 (used by uv)
 
 src/
 ├── macsetup/                 # Python package
