@@ -69,6 +69,7 @@ uv add --dev <package>
 3. **Unix Philosophy**: One command does one thing, support JSON output, proper exit codes
 4. **Error Handling Excellence**: Helpful errors with remediation suggestions
 5. **Documentation Required**: --help for all commands
+6. **Project Boundary**: NEVER edit files outside /Users/atyagi/Code/computer-onboarding/
 
 ## Performance Constraints
 
