@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/atyagi/computer-onboarding/config.schema.json",
+  "title": "macOS Configuration",
+  "description": "Schema for macsetup configuration files",
+  "type": "object",
+  "required": ["version", "metadata", "profiles"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Schema version (e.g., '1.0')"
+    },
+    "metadata": {
+      "$ref": "#/$defs/Metadata"
+    },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/Profile"
+      },
+      "minProperties": 1,
+      "description": "Named configuration profiles"
+    }
+  },
+  "$defs": {
+    "Metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_machine", "macos_version", "tool_version"],
+      "properties": {
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of capture"
+        },
+        "source_machine": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Hostname of source machine"
+        },
+        "macos_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+          "description": "macOS version (e.g., '14.2')"
+        },
+        "tool_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "macsetup version"
+        }
+      }
+    },
+    "Profile": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable profile description"
+        },
+        "extends": {
+          "type": "string",
+          "description": "Parent profile to inherit from"
+        },
+        "applications": {
+          "$ref": "#/$defs/Applications"
+        },
+        "dotfiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Dotfile"
+          },
+          "default": []
+        },
+        "preferences": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Preference"
+          },
+          "default": []
+        }
+      }
+    },
+    "Applications": {
+      "type": "object",
+      "properties": {
+        "homebrew": {
+          "$ref": "#/$defs/HomebrewApps"
+        },
+        "mas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MasApp"
+          },
+          "default": []
+        },
+        "manual": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ManualApp"
+          },
+          "default": []
+        }
+      }
+    },
+    "HomebrewApps": {
+      "type": "object",
+      "properties": {
+        "taps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+/[a-z0-9-]+$"
+          },
+          "default": [],
+          "description": "Homebrew taps (owner/repo format)"
+        },
+        "formulas": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9@._+-]+$"
+          },
+          "default": [],
+          "description": "Homebrew formulas (CLI tools)"
+        },
+        "casks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "default": [],
+          "description": "Homebrew casks (GUI apps)"
+        }
+      }
+    },
+    "MasApp": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Mac App Store app ID"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "App name (for display purposes)"
+        }
+      }
+    },
+    "ManualApp": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Application name"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Download URL"
+        },
+        "instructions": {
+          "type": "string",
+          "description": "Installation instructions"
+        }
+      }
+    },
+    "Dotfile": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(?!\\.\\.)(?!/).*$",
+          "description": "Path relative to $HOME (no .. or leading /)"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["symlink", "copy"],
+          "default": "symlink",
+          "description": "How to install the dotfile"
+        },
+        "template": {
+          "type": "boolean",
+          "default": false,
+          "description": "Process with template variables"
+        }
+      }
+    },
+    "Preference": {
+      "type": "object",
+      "required": ["domain"],
+      "properties": {
+        "domain": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Preference domain (e.g., 'com.apple.dock')"
+        },
+        "key": {
+          "type": "string",
+          "description": "Specific preference key (null for entire domain)"
+        },
+        "value": {
+          "description": "Value to set"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "int", "float", "bool", "array", "dict"],
+          "description": "Value type for defaults command"
+        }
+      }
+    }
+  }
+}

@@ -19,14 +19,14 @@
 
 **Purpose**: Initialize Python project with uv, create package structure
 
-- [ ] T001 Create `.python-version` file with Python 3.14
-- [ ] T002 Create `pyproject.toml` with project metadata and dependencies (PyYAML, jsonschema, pytest, ruff, bats)
-- [ ] T003 Run `uv sync` to generate `uv.lock` and install dependencies
-- [ ] T004 [P] Create package structure: `src/macsetup/__init__.py`, `src/macsetup/__main__.py`
-- [ ] T005 [P] Create test directories: `tests/unit/`, `tests/integration/`, `tests/contract/`, `tests/bats/`
-- [ ] T006 [P] Create `schemas/` directory and copy `config.schema.json` from contracts
-- [ ] T007 [P] Configure ruff in `pyproject.toml` (linting + formatting)
-- [ ] T008 Create `bin/macsetup` bash wrapper script with shebang and `uv run` invocation
+- [x] T001 Create `.python-version` file with Python 3.14
+- [x] T002 Create `pyproject.toml` with project metadata and dependencies (PyYAML, jsonschema, pytest, ruff, bats)
+- [x] T003 Run `uv sync` to generate `uv.lock` and install dependencies
+- [x] T004 [P] Create package structure: `src/macsetup/__init__.py`, `src/macsetup/__main__.py`
+- [x] T005 [P] Create test directories: `tests/unit/`, `tests/integration/`, `tests/contract/`, `tests/bats/`
+- [x] T006 [P] Create `schemas/` directory and copy `config.schema.json` from contracts
+- [x] T007 [P] Configure ruff in `pyproject.toml` (linting + formatting)
+- [x] T008 Create `bin/macsetup` bash wrapper script with shebang and `uv run` invocation
 
 ---
 
@@ -38,25 +38,25 @@
 
 ### Tests for Foundation
 
-- [ ] T009 [P] Unit test for Configuration model in `tests/unit/test_models.py`
-- [ ] T010 [P] Unit test for Metadata model in `tests/unit/test_models.py`
-- [ ] T011 [P] Unit test for Profile model in `tests/unit/test_models.py`
-- [ ] T012 [P] Contract test for config schema validation in `tests/contract/test_config_schema.py`
+- [x] T009 [P] Unit test for Configuration model in `tests/unit/test_models.py`
+- [x] T010 [P] Unit test for Metadata model in `tests/unit/test_models.py`
+- [x] T011 [P] Unit test for Profile model in `tests/unit/test_models.py`
+- [x] T012 [P] Contract test for config schema validation in `tests/contract/test_config_schema.py`
 
 ### Implementation for Foundation
 
-- [ ] T013 [P] Create Configuration dataclass in `src/macsetup/models/config.py`
-- [ ] T014 [P] Create Metadata dataclass in `src/macsetup/models/config.py`
-- [ ] T015 [P] Create Profile dataclass in `src/macsetup/models/config.py`
-- [ ] T016 [P] Create Applications, HomebrewApps, MasApp, ManualApp dataclasses in `src/macsetup/models/config.py`
-- [ ] T017 [P] Create Dotfile dataclass in `src/macsetup/models/config.py`
-- [ ] T018 [P] Create Preference dataclass in `src/macsetup/models/config.py`
-- [ ] T019 Create schema validation module in `src/macsetup/models/schema.py` (load JSON schema, validate configs)
-- [ ] T020 Create YAML config loader/saver in `src/macsetup/models/config.py` (parse YAML to dataclasses)
-- [ ] T021 Create CLI framework with argparse in `src/macsetup/cli.py` (main parser, subcommands skeleton, global options)
-- [ ] T022 [P] Create base adapter interface in `src/macsetup/adapters/__init__.py`
-- [ ] T023 Implement `--help`, `--version`, `--config-dir`, `--json`, `--quiet`, `--verbose` global options in `src/macsetup/cli.py`
-- [ ] T024 [P] Bats test for bash wrapper in `tests/bats/test_wrapper.bats`
+- [x] T013 [P] Create Configuration dataclass in `src/macsetup/models/config.py`
+- [x] T014 [P] Create Metadata dataclass in `src/macsetup/models/config.py`
+- [x] T015 [P] Create Profile dataclass in `src/macsetup/models/config.py`
+- [x] T016 [P] Create Applications, HomebrewApps, MacApp, ManualApp dataclasses in `src/macsetup/models/config.py`
+- [x] T017 [P] Create Dotfile dataclass in `src/macsetup/models/config.py`
+- [x] T018 [P] Create Preference dataclass in `src/macsetup/models/config.py`
+- [x] T019 Create schema validation module in `src/macsetup/models/schema.py` (load JSON schema, validate configs)
+- [x] T020 Create YAML config loader/saver in `src/macsetup/models/config.py` (parse YAML to dataclasses)
+- [x] T021 Create CLI framework with argparse in `src/macsetup/cli.py` (main parser, subcommands skeleton, global options)
+- [x] T022 [P] Create base adapter interface in `src/macsetup/adapters/__init__.py`
+- [x] T023 Implement `--help`, `--version`, `--config-dir`, `--json`, `--quiet`, `--verbose` global options in `src/macsetup/cli.py`
+- [x] T024 [P] Bats test for bash wrapper in `tests/bats/test_wrapper.bats`
 
 **Checkpoint**: Foundation ready - CLI runs with `--help`, models load/save YAML configs
 
@@ -72,31 +72,31 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T025 [P] [US1] Unit test for SetupState model in `tests/unit/test_models.py`
-- [ ] T026 [P] [US1] Unit test for FailedItem model in `tests/unit/test_models.py`
-- [ ] T027 [P] [US1] Unit test for homebrew adapter (mocked) in `tests/unit/test_adapters.py`
-- [ ] T028 [P] [US1] Unit test for mas adapter (mocked) in `tests/unit/test_adapters.py`
-- [ ] T029 [P] [US1] Unit test for defaults adapter (mocked) in `tests/unit/test_adapters.py`
-- [ ] T030 [P] [US1] Unit test for dotfiles adapter (mocked) in `tests/unit/test_adapters.py`
-- [ ] T031 [P] [US1] Unit test for setup service in `tests/unit/test_setup.py`
+- [x] T025 [P] [US1] Unit test for SetupState model in `tests/unit/test_models.py`
+- [x] T026 [P] [US1] Unit test for FailedItem model in `tests/unit/test_models.py`
+- [x] T027 [P] [US1] Unit test for homebrew adapter (mocked) in `tests/unit/test_adapters.py`
+- [x] T028 [P] [US1] Unit test for mas adapter (mocked) in `tests/unit/test_adapters.py`
+- [x] T029 [P] [US1] Unit test for defaults adapter (mocked) in `tests/unit/test_adapters.py`
+- [x] T030 [P] [US1] Unit test for dotfiles adapter (mocked) in `tests/unit/test_adapters.py`
+- [x] T031 [P] [US1] Unit test for setup service in `tests/unit/test_setup.py`
 - [ ] T032 [US1] Integration test for setup command in `tests/integration/test_setup.py`
 
 ### Implementation for User Story 1
 
-- [ ] T033 [P] [US1] Create SetupState dataclass in `src/macsetup/models/config.py`
-- [ ] T034 [P] [US1] Create FailedItem dataclass in `src/macsetup/models/config.py`
-- [ ] T035 [P] [US1] Implement homebrew adapter in `src/macsetup/adapters/homebrew.py` (tap, install formula, install cask, check installed)
-- [ ] T036 [P] [US1] Implement mas adapter in `src/macsetup/adapters/mas.py` (install, list installed, check signed in)
-- [ ] T037 [P] [US1] Implement defaults adapter in `src/macsetup/adapters/defaults.py` (read, write, import domain)
-- [ ] T038 [P] [US1] Implement dotfiles adapter in `src/macsetup/adapters/dotfiles.py` (symlink, copy, check exists)
-- [ ] T039 [US1] Implement setup service in `src/macsetup/services/setup.py` (orchestrate adapters, track state, handle failures)
-- [ ] T040 [US1] Add idempotency check to setup service (skip already-installed items)
-- [ ] T041 [US1] Add resume capability using SetupState in `src/macsetup/services/setup.py`
-- [ ] T042 [US1] Add progress indicator for setup operations in `src/macsetup/services/setup.py`
-- [ ] T043 [US1] Add SIGINT handling for graceful interruption in `src/macsetup/services/setup.py`
-- [ ] T044 [US1] Wire setup command to CLI in `src/macsetup/cli.py` (--profile, --resume, --force, --no-dotfiles, --no-preferences)
-- [ ] T045 [US1] Add JSON output support for setup command in `src/macsetup/cli.py`
-- [ ] T046 [US1] Add error messages with remediation suggestions for common failures
+- [x] T033 [P] [US1] Create SetupState dataclass in `src/macsetup/models/config.py`
+- [x] T034 [P] [US1] Create FailedItem dataclass in `src/macsetup/models/config.py`
+- [x] T035 [P] [US1] Implement homebrew adapter in `src/macsetup/adapters/homebrew.py` (tap, install formula, install cask, check installed)
+- [x] T036 [P] [US1] Implement mas adapter in `src/macsetup/adapters/mas.py` (install, list installed, check signed in)
+- [x] T037 [P] [US1] Implement defaults adapter in `src/macsetup/adapters/defaults.py` (read, write, import domain)
+- [x] T038 [P] [US1] Implement dotfiles adapter in `src/macsetup/adapters/dotfiles.py` (symlink, copy, check exists)
+- [x] T039 [US1] Implement setup service in `src/macsetup/services/setup.py` (orchestrate adapters, track state, handle failures)
+- [x] T040 [US1] Add idempotency check to setup service (skip already-installed items)
+- [x] T041 [US1] Add resume capability using SetupState in `src/macsetup/services/setup.py`
+- [x] T042 [US1] Add progress indicator for setup operations in `src/macsetup/services/setup.py`
+- [x] T043 [US1] Add SIGINT handling for graceful interruption in `src/macsetup/services/setup.py`
+- [x] T044 [US1] Wire setup command to CLI in `src/macsetup/cli.py` (--profile, --resume, --force, --no-dotfiles, --no-preferences)
+- [x] T045 [US1] Add JSON output support for setup command in `src/macsetup/cli.py`
+- [x] T046 [US1] Add error messages with remediation suggestions for common failures
 
 **Checkpoint**: `macsetup setup` works - installs apps, dotfiles, preferences from config.yaml
 

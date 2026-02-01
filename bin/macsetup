@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# macsetup - macOS Configuration Sync CLI wrapper
+# This script invokes the Python package via uv
+
+set -euo pipefail
+
+# Find the project root (where pyproject.toml lives)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Ensure we're running from the project root
+cd "${PROJECT_ROOT}"
+
+# Run the macsetup module via uv
+exec uv run python -m macsetup "$@"
