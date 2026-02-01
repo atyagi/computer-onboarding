@@ -32,7 +32,18 @@ class MasAdapter(Adapter):
             self._run_mas(["install", str(app_id)])
             return AdapterResult(success=True, message=f"Installed app {app_id}")
         except subprocess.CalledProcessError as e:
-            return AdapterResult(success=False, error=e.stderr.strip())
+            error = e.stderr.strip()
+            if "not signed in" in error.lower():
+                error += "\nRemediation: Sign into the Mac App Store first: open /System/Applications/App\\ Store.app"
+            elif "not found" in error.lower() or "no results" in error.lower():
+                error += f"\nRemediation: Verify app ID {app_id} is correct. Search for apps with 'mas search <name>'."
+            elif "already installed" in error.lower():
+                error += f"\nRemediation: App {app_id} is already installed, no action needed."
+            elif "purchased" in error.lower():
+                error += f"\nRemediation: App {app_id} must be purchased or downloaded from App Store first."
+            else:
+                error += f"\nRemediation: Run 'mas install {app_id}' manually to see detailed error."
+            return AdapterResult(success=False, error=error)
 
     def is_installed(self, app_id: int) -> bool:
         """Check if an app is already installed."""

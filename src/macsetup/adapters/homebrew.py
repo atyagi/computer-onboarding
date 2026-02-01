@@ -40,7 +40,14 @@ class HomebrewAdapter(Adapter):
             self._run_brew(["tap", tap])
             return AdapterResult(success=True, message=f"Tapped {tap}")
         except subprocess.CalledProcessError as e:
-            return AdapterResult(success=False, error=e.stderr.strip())
+            error = e.stderr.strip()
+            if "already tapped" in error.lower():
+                error += f"\nRemediation: Tap {tap} is already installed, no action needed."
+            elif "invalid tap" in error.lower() or "not found" in error.lower():
+                error += "\nRemediation: Verify the tap name is correct. Format should be 'user/repo'."
+            else:
+                error += f"\nRemediation: Run 'brew tap {tap}' manually to see detailed error."
+            return AdapterResult(success=False, error=error)
 
     def install_formula(self, formula: str) -> AdapterResult:
         """Install a Homebrew formula."""
@@ -48,7 +55,16 @@ class HomebrewAdapter(Adapter):
             self._run_brew(["install", formula])
             return AdapterResult(success=True, message=f"Installed {formula}")
         except subprocess.CalledProcessError as e:
-            return AdapterResult(success=False, error=e.stderr.strip())
+            error = e.stderr.strip()
+            if "already installed" in error.lower():
+                error += f"\nRemediation: Formula {formula} is already installed, no action needed."
+            elif "no available formula" in error.lower() or "not found" in error.lower():
+                error += f"\nRemediation: Verify the formula name is correct. Search with 'brew search {formula}'."
+            elif "permission denied" in error.lower():
+                error += "\nRemediation: Check Homebrew directory permissions. Run 'brew doctor' for diagnostics."
+            else:
+                error += f"\nRemediation: Run 'brew install {formula}' manually to see detailed error."
+            return AdapterResult(success=False, error=error)
 
     def install_cask(self, cask: str) -> AdapterResult:
         """Install a Homebrew cask."""
@@ -56,7 +72,18 @@ class HomebrewAdapter(Adapter):
             self._run_brew(["install", "--cask", cask])
             return AdapterResult(success=True, message=f"Installed {cask}")
         except subprocess.CalledProcessError as e:
-            return AdapterResult(success=False, error=e.stderr.strip())
+            error = e.stderr.strip()
+            if "already installed" in error.lower():
+                error += f"\nRemediation: Cask {cask} is already installed, no action needed."
+            elif "no available cask" in error.lower() or "not found" in error.lower():
+                error += f"\nRemediation: Verify the cask name is correct. Search with 'brew search --cask {cask}'."
+            elif "permission denied" in error.lower():
+                error += "\nRemediation: Cask installation may require admin privileges. Check system permissions."
+            elif "sha256 mismatch" in error.lower():
+                error += "\nRemediation: Download may be corrupted. Run 'brew cleanup' and try again."
+            else:
+                error += f"\nRemediation: Run 'brew install --cask {cask}' manually to see detailed error."
+            return AdapterResult(success=False, error=error)
 
     def is_tap_installed(self, tap: str) -> bool:
         """Check if a tap is already tapped."""

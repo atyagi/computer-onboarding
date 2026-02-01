@@ -95,7 +95,14 @@ class DefaultsAdapter(Adapter):
             self._run_defaults(args)
             return AdapterResult(success=True, message=f"Set {domain} {key}")
         except subprocess.CalledProcessError as e:
-            return AdapterResult(success=False, error=e.stderr.strip())
+            error = e.stderr.strip()
+            if "does not exist" in error.lower():
+                error += f"\nRemediation: Domain {domain} may not be a valid preference domain. Check with 'defaults domains'."
+            elif "type" in error.lower():
+                error += f"\nRemediation: Value type mismatch for {key}. Try specifying value_type explicitly."
+            else:
+                error += f"\nRemediation: Run 'defaults write {domain} {key}' manually to see detailed error."
+            return AdapterResult(success=False, error=error)
 
     def delete(self, domain: str, key: str | None = None) -> AdapterResult:
         """Delete a preference value or entire domain.
@@ -114,7 +121,12 @@ class DefaultsAdapter(Adapter):
             self._run_defaults(args, check=False)
             return AdapterResult(success=True, message=f"Deleted {domain} {key or ''}")
         except subprocess.CalledProcessError as e:
-            return AdapterResult(success=False, error=e.stderr.strip())
+            error = e.stderr.strip()
+            if "does not exist" in error.lower():
+                error += f"\nRemediation: Key {key} or domain {domain} does not exist, no action needed."
+            else:
+                error += f"\nRemediation: Run 'defaults delete {domain} {key or ''}' manually to see detailed error."
+            return AdapterResult(success=False, error=error)
 
     def import_domain(self, domain: str, plist_path: str) -> AdapterResult:
         """Import preferences from a plist file.
@@ -130,7 +142,14 @@ class DefaultsAdapter(Adapter):
             self._run_defaults(["import", domain, plist_path])
             return AdapterResult(success=True, message=f"Imported {domain} from {plist_path}")
         except subprocess.CalledProcessError as e:
-            return AdapterResult(success=False, error=e.stderr.strip())
+            error = e.stderr.strip()
+            if "no such file" in error.lower() or "not found" in error.lower():
+                error += f"\nRemediation: Plist file not found at {plist_path}. Verify the path is correct."
+            elif "malformed" in error.lower() or "parse" in error.lower():
+                error += f"\nRemediation: Plist file at {plist_path} is malformed. Validate with 'plutil {plist_path}'."
+            else:
+                error += f"\nRemediation: Run 'defaults import {domain} {plist_path}' manually to see detailed error."
+            return AdapterResult(success=False, error=error)
 
     def export_domain(self, domain: str, plist_path: str) -> AdapterResult:
         """Export preferences to a plist file.
@@ -146,4 +165,11 @@ class DefaultsAdapter(Adapter):
             self._run_defaults(["export", domain, plist_path])
             return AdapterResult(success=True, message=f"Exported {domain} to {plist_path}")
         except subprocess.CalledProcessError as e:
-            return AdapterResult(success=False, error=e.stderr.strip())
+            error = e.stderr.strip()
+            if "does not exist" in error.lower():
+                error += f"\nRemediation: Domain {domain} does not exist. Check available domains with 'defaults domains'."
+            elif "permission denied" in error.lower():
+                error += f"\nRemediation: Cannot write to {plist_path}. Check directory permissions."
+            else:
+                error += f"\nRemediation: Run 'defaults export {domain} {plist_path}' manually to see detailed error."
+            return AdapterResult(success=False, error=error)

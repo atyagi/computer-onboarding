@@ -53,8 +53,18 @@ class DotfilesAdapter(Adapter):
             # Create symlink
             target.symlink_to(source)
             return AdapterResult(success=True, message=f"Symlinked {target} -> {source}")
+        except PermissionError as e:
+            error = str(e)
+            error += f"\nRemediation: Permission denied for {target}. Check file/directory permissions."
+            return AdapterResult(success=False, error=error)
+        except FileNotFoundError as e:
+            error = str(e)
+            error += f"\nRemediation: Source or parent directory not found. Verify {source} and {target.parent} exist."
+            return AdapterResult(success=False, error=error)
         except Exception as e:
-            return AdapterResult(success=False, error=str(e))
+            error = str(e)
+            error += f"\nRemediation: Failed to create symlink {target} -> {source}. Check paths and permissions."
+            return AdapterResult(success=False, error=error)
 
     def copy(self, source: Path, target: Path, backup: bool = True) -> AdapterResult:
         """Copy a file from source to target.
@@ -86,8 +96,18 @@ class DotfilesAdapter(Adapter):
             # Copy file
             shutil.copy2(source, target)
             return AdapterResult(success=True, message=f"Copied {source} to {target}")
+        except PermissionError as e:
+            error = str(e)
+            error += f"\nRemediation: Permission denied for {target}. Check file/directory permissions."
+            return AdapterResult(success=False, error=error)
+        except FileNotFoundError as e:
+            error = str(e)
+            error += f"\nRemediation: Source or parent directory not found. Verify {source} and {target.parent} exist."
+            return AdapterResult(success=False, error=error)
         except Exception as e:
-            return AdapterResult(success=False, error=str(e))
+            error = str(e)
+            error += f"\nRemediation: Failed to copy {source} to {target}. Check paths and permissions."
+            return AdapterResult(success=False, error=error)
 
     def exists(self, path: Path) -> bool:
         """Check if a file exists.
@@ -145,5 +165,15 @@ class DotfilesAdapter(Adapter):
 
             shutil.copy2(source, target)
             return AdapterResult(success=True, message=f"Copied {source} to {target}")
+        except PermissionError as e:
+            error = str(e)
+            error += f"\nRemediation: Permission denied. Check file/directory permissions for {target}."
+            return AdapterResult(success=False, error=error)
+        except FileNotFoundError as e:
+            error = str(e)
+            error += f"\nRemediation: Source file not found at {source}. Verify the file exists."
+            return AdapterResult(success=False, error=error)
         except Exception as e:
-            return AdapterResult(success=False, error=str(e))
+            error = str(e)
+            error += f"\nRemediation: Failed to copy {source} to config directory. Check paths and permissions."
+            return AdapterResult(success=False, error=error)
