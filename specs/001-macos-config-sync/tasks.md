@@ -79,7 +79,7 @@
 - [x] T029 [P] [US1] Unit test for defaults adapter (mocked) in `tests/unit/test_adapters.py`
 - [x] T030 [P] [US1] Unit test for dotfiles adapter (mocked) in `tests/unit/test_adapters.py`
 - [x] T031 [P] [US1] Unit test for setup service in `tests/unit/test_setup.py`
-- [ ] T032 [US1] Integration test for setup command in `tests/integration/test_setup.py`
+- [x] T032 [US1] Integration test for setup command in `tests/integration/test_setup.py`
 
 ### Implementation for User Story 1
 
