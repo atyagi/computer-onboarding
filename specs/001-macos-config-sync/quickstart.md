@@ -7,7 +7,7 @@
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Clone the repository
-git clone https://github.com/atyagi/computer-onboarding.git
+git clone git@github.com:atyagi/computer-onboarding.git
 cd computer-onboarding
 
 # Install dependencies (uv will automatically install Python 3.14 if needed)

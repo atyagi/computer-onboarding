@@ -76,7 +76,7 @@ Container for all application sources.
 @dataclass
 class Applications:
     homebrew: HomebrewApps | None   # Homebrew-installed apps
-    mas: list[MasApp]               # Mac App Store apps
+    mas: list[MacApp]               # Mac App Store apps
     manual: list[ManualApp]         # Apps requiring manual install
 ```
 
@@ -100,13 +100,13 @@ class HomebrewApps:
 
 ---
 
-### MasApp
+### MacApp
 
 Mac App Store application.
 
 ```python
 @dataclass
-class MasApp:
+class MacApp:
     id: int                         # App Store ID (numeric)
     name: str                       # Display name (for readability)
 ```
@@ -215,7 +215,7 @@ Configuration
     └── Profile (1:N)
         └── Applications (1:1)
         │   └── HomebrewApps (1:1)
-        │   └── MasApp (1:N)
+        │   └── MacApp (1:N)
         │   └── ManualApp (1:N)
         └── Dotfile (1:N)
         └── Preference (1:N)
