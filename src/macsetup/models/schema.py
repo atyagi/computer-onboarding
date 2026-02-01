@@ -1,20 +1,15 @@
 """JSON schema validation for macsetup configuration."""
 
 import json
-from pathlib import Path
+from importlib.resources import files
 
 from jsonschema import Draft202012Validator
-
-# Find schema file relative to this module
-_SCHEMA_PATH = Path(__file__).parent.parent.parent.parent / "schemas" / "config.schema.json"
 
 
 def load_schema() -> dict:
     """Load the configuration schema from disk."""
-    if not _SCHEMA_PATH.exists():
-        raise FileNotFoundError(f"Schema file not found: {_SCHEMA_PATH}")
-    with open(_SCHEMA_PATH) as f:
-        return json.load(f)
+    schema_file = files("macsetup").joinpath("schemas/config.schema.json")
+    return json.loads(schema_file.read_text())
 
 
 def validate_config(config: dict) -> list[str]:

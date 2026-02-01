@@ -1,18 +1,15 @@
 """Contract tests for config schema validation."""
 
-import json
-from pathlib import Path
-
 import pytest
 from jsonschema import ValidationError, validate
+
+from macsetup.models.schema import load_schema
 
 
 @pytest.fixture
 def schema():
     """Load the config schema."""
-    schema_path = Path(__file__).parent.parent.parent / "schemas" / "config.schema.json"
-    with open(schema_path) as f:
-        return json.load(f)
+    return load_schema()
 
 
 class TestConfigSchemaValidation:
