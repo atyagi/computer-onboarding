@@ -1,18 +1,15 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: (none) → 1.0.0 (initial ratification)
-Modified principles: N/A (initial version)
+Version change: 1.0.0 → 1.1.0 (minor version - new principle added)
+Modified principles: N/A
 Added sections:
-  - Core Principles (5 principles)
-  - Additional Constraints (Security, Performance)
-  - Development Workflow
-  - Governance
+  - Principle VI: Phased Pull Requests (new workflow principle)
 Removed sections: N/A
 Templates requiring updates:
-  - .specify/templates/plan-template.md: ✅ compatible (Constitution Check section exists)
-  - .specify/templates/spec-template.md: ✅ compatible (requirements align)
-  - .specify/templates/tasks-template.md: ✅ compatible (TDD workflow supported)
+  - .specify/templates/plan-template.md: ✅ compatible (no changes needed)
+  - .specify/templates/spec-template.md: ✅ compatible (no changes needed)
+  - .specify/templates/tasks-template.md: ✅ compatible (phase structure already defined)
 Follow-up TODOs: None
 -->
 
@@ -86,6 +83,21 @@ All user-facing features MUST be documented:
 **Rationale**: Undocumented features do not exist to users. Documentation is
 part of the feature, not an afterthought.
 
+### VI. Phased Pull Requests
+
+Feature implementation MUST proceed through discrete phases with independent PRs:
+
+- Each phase defined in tasks.md MUST result in a separate pull request
+- PRs MUST be created in phase order (Setup → Foundational → User Story phases)
+- Each PR MUST be reviewed and merged before the next phase begins
+- PR title MUST reference the phase (e.g., "Phase 1: Setup for [feature]")
+- Each phase PR MUST be independently reviewable and testable
+- Foundation phases (Setup, Foundational) MUST complete before user story work
+
+**Rationale**: Phased PRs enable incremental review, reduce change risk, allow
+early feedback, and create logical rollback points. Large monolithic PRs are
+harder to review, riskier to merge, and provide no incremental value delivery.
+
 ## Additional Constraints
 
 ### Security Standards
@@ -145,4 +157,4 @@ computer-onboarding project. All development work MUST comply.
 - Violations MUST be documented and justified in Complexity Tracking
 - Constitution supersedes informal practices or preferences
 
-**Version**: 1.0.0 | **Ratified**: 2026-01-31 | **Last Amended**: 2026-01-31
+**Version**: 1.1.0 | **Ratified**: 2026-01-31 | **Last Amended**: 2026-02-01
