@@ -77,7 +77,10 @@ class DefaultsAdapter(Adapter):
                 args.extend(["-array", *[str(v) for v in value]])
             elif value_type == "dict":
                 # Dict needs special handling - use plistlib for complex cases
-                args.extend(["-dict", *[f"{k} {v}" for k, v in value.items()]])
+                dict_args = []
+                for k, v in value.items():
+                    dict_args.extend([str(k), str(v)])
+                args.extend(["-dict", *dict_args])
             else:
                 # Auto-detect type
                 if isinstance(value, bool):

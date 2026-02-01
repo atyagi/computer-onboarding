@@ -164,6 +164,27 @@ class TestDefaultsAdapter:
             mock_run.assert_called_once()
             assert "write" in mock_run.call_args[0][0]
 
+    def test_write_dict_preference(self):
+        """Defaults adapter correctly formats dict arguments."""
+        from macsetup.adapters.defaults import DefaultsAdapter
+
+        adapter = DefaultsAdapter()
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            result = adapter.write(
+                "com.example.app", "prefs", {"key1": "val1", "key2": "val2"}, "dict"
+            )
+            assert result.success is True
+            mock_run.assert_called_once()
+            # Verify args are separate: ["-dict", "key1", "val1", "key2", "val2"]
+            call_args = mock_run.call_args[0][0]
+            assert "write" in call_args
+            assert "-dict" in call_args
+            dict_idx = call_args.index("-dict")
+            # Check that keys and values are separate arguments
+            assert call_args[dict_idx + 1] in ["key1", "key2"]
+            assert call_args[dict_idx + 2] in ["val1", "val2"]
+
     def test_import_domain(self):
         """Defaults adapter can import a domain from a file."""
         from macsetup.adapters.defaults import DefaultsAdapter
