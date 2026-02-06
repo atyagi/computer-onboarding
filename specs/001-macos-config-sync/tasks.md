@@ -110,24 +110,24 @@
 
 ### Tests for User Story 2
 
-- [ ] T047 [P] [US2] Unit test for capture homebrew (mocked) in `tests/unit/test_capture.py`
-- [ ] T048 [P] [US2] Unit test for capture mas (mocked) in `tests/unit/test_capture.py`
-- [ ] T049 [P] [US2] Unit test for capture dotfiles (mocked) in `tests/unit/test_capture.py`
-- [ ] T050 [P] [US2] Unit test for capture preferences (mocked) in `tests/unit/test_capture.py`
-- [ ] T051 [P] [US2] Unit test for capture service in `tests/unit/test_capture.py`
-- [ ] T052 [US2] Integration test for capture command in `tests/integration/test_capture.py`
+- [x] T047 [P] [US2] Unit test for capture homebrew (mocked) in `tests/unit/test_capture.py`
+- [x] T048 [P] [US2] Unit test for capture mas (mocked) in `tests/unit/test_capture.py`
+- [x] T049 [P] [US2] Unit test for capture dotfiles (mocked) in `tests/unit/test_capture.py`
+- [x] T050 [P] [US2] Unit test for capture preferences (mocked) in `tests/unit/test_capture.py`
+- [x] T051 [P] [US2] Unit test for capture service in `tests/unit/test_capture.py`
+- [x] T052 [US2] Integration test for capture command in `tests/integration/test_capture.py`
 
 ### Implementation for User Story 2
 
-- [ ] T053 [P] [US2] Add list_formulas, list_casks, list_taps to homebrew adapter in `src/macsetup/adapters/homebrew.py`
-- [ ] T054 [P] [US2] Add list_apps to mas adapter in `src/macsetup/adapters/mas.py`
-- [ ] T055 [P] [US2] Add export_domain to defaults adapter in `src/macsetup/adapters/defaults.py`
-- [ ] T056 [P] [US2] Add copy_to_config, list_tracked to dotfiles adapter in `src/macsetup/adapters/dotfiles.py`
-- [ ] T057 [US2] Implement capture service in `src/macsetup/services/capture.py` (orchestrate adapters, build config)
-- [ ] T058 [US2] Add metadata population (hostname, macOS version, timestamp) to capture service
-- [ ] T059 [US2] Wire capture command to CLI in `src/macsetup/cli.py` (--profile, --dotfiles, --preferences, --skip-*)
-- [ ] T060 [US2] Add JSON output support for capture command
-- [ ] T061 [US2] Create dotfiles storage directory structure in config-dir
+- [x] T053 [P] [US2] Add list_formulas, list_casks, list_taps to homebrew adapter in `src/macsetup/adapters/homebrew.py`
+- [x] T054 [P] [US2] Add list_apps to mas adapter in `src/macsetup/adapters/mas.py`
+- [x] T055 [P] [US2] Add export_domain to defaults adapter in `src/macsetup/adapters/defaults.py`
+- [x] T056 [P] [US2] Add copy_to_config, list_tracked to dotfiles adapter in `src/macsetup/adapters/dotfiles.py`
+- [x] T057 [US2] Implement capture service in `src/macsetup/services/capture.py` (orchestrate adapters, build config)
+- [x] T058 [US2] Add metadata population (hostname, macOS version, timestamp) to capture service
+- [x] T059 [US2] Wire capture command to CLI in `src/macsetup/cli.py` (--profile, --dotfiles, --preferences, --skip-*)
+- [x] T060 [US2] Add JSON output support for capture command
+- [x] T061 [US2] Create dotfiles storage directory structure in config-dir
 
 **Checkpoint**: `macsetup capture` works - creates config.yaml with apps, dotfiles, preferences
 
@@ -141,19 +141,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T062 [P] [US3] Unit test for sync service (mocked) in `tests/unit/test_sync.py`
-- [ ] T063 [P] [US3] Unit test for file watcher in `tests/unit/test_sync.py`
-- [ ] T064 [US3] Integration test for sync daemon in `tests/integration/test_sync.py`
+- [x] T062 [P] [US3] Unit test for sync service (mocked) in `tests/unit/test_sync.py`
+- [x] T063 [P] [US3] Unit test for file watcher in `tests/unit/test_sync.py`
+- [x] T064 [US3] Integration test for sync daemon in `tests/integration/test_sync.py`
 
 ### Implementation for User Story 3
 
-- [ ] T065 [US3] Implement sync service in `src/macsetup/services/sync.py` (periodic capture, file watching)
-- [ ] T066 [US3] Add daemon mode with interval scheduling in `src/macsetup/services/sync.py`
-- [ ] T067 [US3] Add dotfile change watcher using filesystem events in `src/macsetup/services/sync.py`
-- [ ] T068 [US3] Add PID file management for daemon in `src/macsetup/services/sync.py`
-- [ ] T069 [US3] Wire sync subcommands to CLI in `src/macsetup/cli.py` (start, stop, status, now)
-- [ ] T070 [US3] Add --interval and --watch options for sync start
-- [ ] T071 [US3] Add SIGHUP handling (daemon continues) in sync service
+- [x] T065 [US3] Implement sync service in `src/macsetup/services/sync.py` (periodic capture, file watching)
+- [x] T066 [US3] Add daemon mode with interval scheduling in `src/macsetup/services/sync.py`
+- [x] T067 [US3] Add dotfile change watcher using filesystem events in `src/macsetup/services/sync.py`
+- [x] T068 [US3] Add PID file management for daemon in `src/macsetup/services/sync.py`
+- [x] T069 [US3] Wire sync subcommands to CLI in `src/macsetup/cli.py` (start, stop, status, now)
+- [x] T070 [US3] Add --interval and --watch options for sync start
+- [x] T071 [US3] Add SIGHUP handling (daemon continues) in sync service
 
 **Checkpoint**: `macsetup sync start/stop/status` works - daemon captures changes automatically
 
@@ -167,21 +167,21 @@
 
 ### Tests for User Story 4
 
-- [ ] T072 [P] [US4] Unit test for preview service in `tests/unit/test_preview.py`
-- [ ] T073 [P] [US4] Unit test for profile inheritance in `tests/unit/test_models.py`
-- [ ] T074 [P] [US4] Unit test for diff calculation in `tests/unit/test_preview.py`
-- [ ] T075 [US4] Integration test for preview command in `tests/integration/test_preview.py`
+- [x] T072 [P] [US4] Unit test for preview service in `tests/unit/test_preview.py`
+- [x] T073 [P] [US4] Unit test for profile inheritance in `tests/unit/test_models.py`
+- [x] T074 [P] [US4] Unit test for diff calculation in `tests/unit/test_preview.py`
+- [x] T075 [US4] Integration test for preview command in `tests/integration/test_preview.py`
 
 ### Implementation for User Story 4
 
-- [ ] T076 [US4] Implement preview service in `src/macsetup/services/preview.py` (list what would be installed)
-- [ ] T077 [US4] Add diff mode to preview service (compare config vs current state)
-- [ ] T078 [US4] Implement profile inheritance resolution in `src/macsetup/models/config.py`
-- [ ] T079 [US4] Wire preview command to CLI in `src/macsetup/cli.py` (--profile, --diff)
-- [ ] T080 [US4] Add --include/--exclude to setup command in `src/macsetup/cli.py`
-- [ ] T081 [US4] Wire profile subcommands to CLI in `src/macsetup/cli.py` (list, show, create, delete, diff)
-- [ ] T082 [US4] Add JSON output support for preview and profile commands
-- [ ] T083 [US4] Implement validate command in `src/macsetup/cli.py` (--strict option)
+- [x] T076 [US4] Implement preview service in `src/macsetup/services/preview.py` (list what would be installed)
+- [x] T077 [US4] Add diff mode to preview service (compare config vs current state)
+- [x] T078 [US4] Implement profile inheritance resolution in `src/macsetup/models/config.py`
+- [x] T079 [US4] Wire preview command to CLI in `src/macsetup/cli.py` (--profile, --diff)
+- [x] T080 [US4] Add --include/--exclude to setup command in `src/macsetup/cli.py`
+- [x] T081 [US4] Wire profile subcommands to CLI in `src/macsetup/cli.py` (list, show, create, delete, diff)
+- [x] T082 [US4] Add JSON output support for preview and profile commands
+- [x] T083 [US4] Implement validate command in `src/macsetup/cli.py` (--strict option)
 
 **Checkpoint**: `macsetup preview` and `macsetup profile` commands work; selective setup works
 
@@ -191,17 +191,17 @@
 
 **Purpose**: Documentation, edge cases, hardening
 
-- [ ] T084 [P] Add --help text for all commands and options in `src/macsetup/cli.py`
-- [ ] T085 [P] Create README.md with quickstart instructions at repository root
-- [ ] T086 [P] Add Homebrew bootstrap (install if missing) in setup service
-- [ ] T087 [P] Add mas-cli bootstrap (install via brew if missing) in setup service
-- [ ] T088 Add macOS version compatibility check and warning in `src/macsetup/cli.py`
-- [ ] T089 Add manual app listing at end of setup (apps requiring manual intervention)
-- [ ] T090 Add network error handling with retry for setup operations
-- [ ] T091 [P] Add comprehensive error messages for all exit codes
-- [ ] T092 Run full test suite and fix any failures
+- [x] T084 [P] Add --help text for all commands and options in `src/macsetup/cli.py`
+- [x] T085 [P] Create README.md with quickstart instructions at repository root
+- [x] T086 [P] Add Homebrew bootstrap (install if missing) in setup service
+- [x] T087 [P] Add mas-cli bootstrap (install via brew if missing) in setup service
+- [x] T088 Add macOS version compatibility check and warning in `src/macsetup/cli.py`
+- [x] T089 Add manual app listing at end of setup (apps requiring manual intervention)
+- [x] T090 Add network error handling with retry for setup operations
+- [x] T091 [P] Add comprehensive error messages for all exit codes
+- [x] T092 Run full test suite and fix any failures
 - [ ] T093 Run quickstart.md validation (manual test of documented workflow)
-- [ ] T094 Performance validation: verify <500ms for local operations, <100MB memory
+- [x] T094 Performance validation: verify <500ms for local operations, <100MB memory
 
 ---
 

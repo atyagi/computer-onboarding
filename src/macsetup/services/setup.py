@@ -1,7 +1,9 @@
 """Setup service for macsetup."""
 
 import json
+import platform
 import signal
+import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -18,6 +20,9 @@ from macsetup.models.config import (
     Profile,
     SetupState,
 )
+
+# Minimum supported macOS version (Monterey)
+MIN_MACOS_VERSION = (12, 0)
 
 
 @dataclass
@@ -179,6 +184,66 @@ class SetupService:
         if self.progress_callback:
             self.progress_callback(message, current, total)
 
+    @staticmethod
+    def check_macos_version() -> str | None:
+        """Check macOS version compatibility.
+
+        Returns:
+            Warning message if version is below minimum, None if compatible.
+        """
+        mac_ver = platform.mac_ver()[0]
+        if not mac_ver:
+            return None
+        try:
+            parts = tuple(int(p) for p in mac_ver.split(".")[:2])
+            if parts < MIN_MACOS_VERSION:
+                return (
+                    f"Warning: macOS {mac_ver} is below minimum supported version "
+                    f"{MIN_MACOS_VERSION[0]}.{MIN_MACOS_VERSION[1]} (Monterey). "
+                    "Some features may not work correctly."
+                )
+        except ValueError:
+            pass
+        return None
+
+    def _bootstrap_homebrew(self) -> bool:
+        """Install Homebrew if not available.
+
+        Returns:
+            True if Homebrew is available after bootstrap, False otherwise.
+        """
+        if self.homebrew.is_available():
+            return True
+        self._report_progress("Installing Homebrew", 0, 1)
+        try:
+            subprocess.run(
+                [
+                    "/bin/bash",
+                    "-c",
+                    'NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            return self.homebrew.is_available()
+        except subprocess.CalledProcessError:
+            return False
+
+    def _bootstrap_mas(self) -> bool:
+        """Install mas-cli via Homebrew if not available.
+
+        Returns:
+            True if mas is available after bootstrap, False otherwise.
+        """
+        if self.mas.is_available():
+            return True
+        if not self.homebrew.is_available():
+            return False
+        self._report_progress("Installing mas-cli", 0, 1)
+        result = self.homebrew.install_formula("mas")
+        return result.success and self.mas.is_available()
+
     def run(self, resume: bool = False) -> SetupResult:
         """Run the setup process.
 
@@ -202,6 +267,12 @@ class SetupService:
         result = SetupResult(success=True, manual_apps=[])
 
         try:
+            # Bootstrap Homebrew if needed and apps are requested
+            if profile.applications:
+                self._bootstrap_homebrew()
+                if profile.applications.mas:
+                    self._bootstrap_mas()
+
             # Install Homebrew packages
             if self.homebrew.is_available() and profile.applications:
                 self._install_homebrew(profile, result)
@@ -318,9 +389,7 @@ class SetupService:
             if self._interrupted:
                 return
             item_id = f"mas:{app.id}"
-            if not self.force and (
-                self._is_completed(item_id) or self.mas.is_installed(app.id)
-            ):
+            if not self.force and (self._is_completed(item_id) or self.mas.is_installed(app.id)):
                 continue
             self._report_progress(f"Installing {app.name}", i + 1, len(profile.applications.mas))
             mas_result = self.mas.install(app.id)
