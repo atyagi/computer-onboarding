@@ -15,21 +15,21 @@ cd computer-onboarding
 # Install dependencies
 uv sync
 
-# Install (adds macsetup to PATH)
-./install.sh
+# Run via the wrapper script
+./bin/macsetup --help
 ```
 
 ## Quick Start
 
 ```bash
 # Capture your current machine configuration
-macsetup capture
+./bin/macsetup capture
 
 # Preview what would be installed
-macsetup preview
+./bin/macsetup preview
 
 # Set up a new machine
-macsetup setup
+./bin/macsetup setup
 ```
 
 ## Documentation
