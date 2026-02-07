@@ -13,8 +13,8 @@ cd computer-onboarding
 # Install dependencies (uv will automatically install Python 3.14 if needed)
 uv sync
 
-# Install (adds macsetup to PATH)
-./install.sh
+# Run macsetup via the bin wrapper
+bin/macsetup --help
 ```
 
 Prerequisites:
