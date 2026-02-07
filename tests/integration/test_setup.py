@@ -6,7 +6,6 @@ from CLI invocation through service execution.
 
 import json
 from datetime import UTC, datetime
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -63,7 +62,12 @@ def test_config_dir(tmp_path):
                 ],
                 preferences=[
                     Preference(domain="com.apple.dock", key="autohide", value=True, type="bool"),
-                    Preference(domain="NSGlobalDomain", key="AppleShowAllExtensions", value=True, type="bool"),
+                    Preference(
+                        domain="NSGlobalDomain",
+                        key="AppleShowAllExtensions",
+                        value=True,
+                        type="bool",
+                    ),
                 ],
             ),
             "minimal": Profile(
@@ -86,7 +90,9 @@ def test_config_dir(tmp_path):
 
     # Create sample dotfiles
     (dotfiles_dir / ".zshrc").write_text("# Sample zshrc\nexport PATH=$HOME/bin:$PATH\n")
-    (dotfiles_dir / ".gitconfig").write_text("[user]\n  name = Test User\n  email = test@example.com\n")
+    (dotfiles_dir / ".gitconfig").write_text(
+        "[user]\n  name = Test User\n  email = test@example.com\n"
+    )
 
     return config_dir
 
@@ -107,7 +113,9 @@ class TestSetupCommandIntegration:
 
     def test_setup_command_invalid_profile(self, test_config_dir, capsys):
         """Setup command fails gracefully when profile doesn't exist."""
-        exit_code = main(["--config-dir", str(test_config_dir), "setup", "--profile", "nonexistent"])
+        exit_code = main(
+            ["--config-dir", str(test_config_dir), "setup", "--profile", "nonexistent"]
+        )
 
         assert exit_code == 2
         captured = capsys.readouterr()

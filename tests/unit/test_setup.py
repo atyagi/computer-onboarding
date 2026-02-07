@@ -80,9 +80,7 @@ class TestSetupService:
                                 with patch.object(
                                     service.homebrew, "is_cask_installed", return_value=True
                                 ):
-                                    with patch.object(
-                                        service.defaults, "write"
-                                    ) as mock_defaults:
+                                    with patch.object(service.defaults, "write") as mock_defaults:
                                         mock_defaults.return_value = AdapterResult(success=True)
                                         service.run()
                                         mock_tap.assert_called()
@@ -162,9 +160,7 @@ class TestSetupService:
                             ):
                                 with patch.object(service.dotfiles, "symlink") as mock_symlink:
                                     mock_symlink.return_value = AdapterResult(success=True)
-                                    with patch.object(
-                                        service.defaults, "write"
-                                    ) as mock_defaults:
+                                    with patch.object(service.defaults, "write") as mock_defaults:
                                         mock_defaults.return_value = AdapterResult(success=True)
                                         result = service.run()
                                         assert len(result.failed_items) > 0
@@ -178,7 +174,7 @@ class TestSetupService:
         with patch.object(service.homebrew, "install_formula") as mock_formula:
             mock_formula.return_value = AdapterResult(success=True)
             with patch.object(service.homebrew, "is_available", return_value=True):
-                with patch.object(service.mas, "is_available", return_value=False):
+                with patch.object(service.mas, "is_available", return_value=True):
                     with patch.object(service.homebrew, "install_tap") as mock_tap:
                         mock_tap.return_value = AdapterResult(success=True)
                         # Mark all items as already installed
@@ -264,9 +260,7 @@ class TestSetupStateModel:
             error="Requires Rosetta",
             timestamp=datetime.now(UTC),
         )
-        state = SetupState(
-            started_at=datetime.now(UTC), profile="default", failed_items=[failed]
-        )
+        state = SetupState(started_at=datetime.now(UTC), profile="default", failed_items=[failed])
         assert len(state.failed_items) == 1
 
     def test_setup_state_has_status(self):

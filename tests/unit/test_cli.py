@@ -448,15 +448,18 @@ class TestCreateParser:
         from macsetup.cli import create_parser
 
         parser = create_parser()
-        args = parser.parse_args([
-            "setup",
-            "--profile", "custom",
-            "--dry-run",
-            "--force",
-            "--resume",
-            "--no-dotfiles",
-            "--no-preferences",
-        ])
+        args = parser.parse_args(
+            [
+                "setup",
+                "--profile",
+                "custom",
+                "--dry-run",
+                "--force",
+                "--resume",
+                "--no-dotfiles",
+                "--no-preferences",
+            ]
+        )
 
         assert args.command == "setup"
         assert args.profile == "custom"
@@ -477,3 +480,683 @@ class TestCreateParser:
             args = parser.parse_args(["--json", "--quiet", cmd])
             assert args.json is True
             assert args.quiet is True
+
+
+class TestCmdCapture:
+    """Tests for cmd_capture function."""
+
+    def _make_args(self, tmp_path, **overrides):
+        """Create a Namespace with capture defaults."""
+        defaults = {
+            "resolved_config_dir": tmp_path,
+            "profile": "default",
+            "json": False,
+            "quiet": True,
+            "dotfiles": None,
+            "preferences": None,
+            "skip_apps": False,
+            "skip_dotfiles": False,
+            "skip_preferences": False,
+        }
+        defaults.update(overrides)
+        return argparse.Namespace(**defaults)
+
+    def _mock_config(self):
+        """Create a mock Configuration returned by CaptureService."""
+        mock_config = MagicMock()
+        mock_profile = MagicMock()
+        mock_profile.applications = MagicMock()
+        mock_profile.applications.homebrew = MagicMock(
+            taps=["tap1"], formulas=["git"], casks=["firefox"]
+        )
+        mock_profile.applications.mas = [MagicMock(id=1, name="App")]
+        mock_profile.dotfiles = [MagicMock(path="~/.zshrc")]
+        mock_profile.preferences = [MagicMock(domain="com.apple.dock")]
+        mock_config.profiles = {"default": mock_profile}
+        return mock_config
+
+    def test_capture_success(self, tmp_path, capsys):
+        """Capture returns exit 0 and produces text output."""
+        from macsetup.cli import cmd_capture
+
+        args = self._make_args(tmp_path, quiet=False)
+        mock_config = self._mock_config()
+
+        with (
+            patch("macsetup.services.capture.CaptureService") as mock_cls,
+            patch("macsetup.models.config.save_config"),
+        ):
+            mock_cls.return_value.capture.return_value = mock_config
+            result = cmd_capture(args)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Capturing configuration" in captured.out
+
+    def test_capture_json_output(self, tmp_path, capsys):
+        """JSON output includes success, config_path, profile, config."""
+        from macsetup.cli import cmd_capture
+
+        args = self._make_args(tmp_path, json=True)
+        mock_config = self._mock_config()
+
+        with (
+            patch("macsetup.services.capture.CaptureService") as mock_cls,
+            patch("macsetup.models.config.save_config"),
+            patch("macsetup.models.config.config_to_dict", return_value={"version": 1}),
+        ):
+            mock_cls.return_value.capture.return_value = mock_config
+            result = cmd_capture(args)
+
+        assert result == 0
+        output = json.loads(capsys.readouterr().out)
+        assert output["success"] is True
+        assert "config_path" in output
+        assert output["profile"] == "default"
+        assert "config" in output
+
+    def test_capture_quiet_suppresses_output(self, tmp_path, capsys):
+        """No stdout when --quiet is set."""
+        from macsetup.cli import cmd_capture
+
+        args = self._make_args(tmp_path, quiet=True)
+        mock_config = self._mock_config()
+
+        with (
+            patch("macsetup.services.capture.CaptureService") as mock_cls,
+            patch("macsetup.models.config.save_config"),
+        ):
+            mock_cls.return_value.capture.return_value = mock_config
+            result = cmd_capture(args)
+
+        assert result == 0
+        assert capsys.readouterr().out == ""
+
+    def test_capture_passes_skip_flags(self, tmp_path):
+        """skip_apps, skip_dotfiles, skip_preferences forwarded to service."""
+        from macsetup.cli import cmd_capture
+
+        args = self._make_args(tmp_path, skip_apps=True, skip_dotfiles=True, skip_preferences=True)
+        mock_config = self._mock_config()
+
+        with (
+            patch("macsetup.services.capture.CaptureService") as mock_cls,
+            patch("macsetup.models.config.save_config"),
+        ):
+            mock_cls.return_value.capture.return_value = mock_config
+            cmd_capture(args)
+
+            call_kwargs = mock_cls.call_args[1]
+            assert call_kwargs["skip_apps"] is True
+            assert call_kwargs["skip_dotfiles"] is True
+            assert call_kwargs["skip_preferences"] is True
+
+    def test_capture_parses_dotfiles_list(self, tmp_path):
+        """Comma-separated --dotfiles parsed into list."""
+        from macsetup.cli import cmd_capture
+
+        args = self._make_args(tmp_path, dotfiles="~/.zshrc, ~/.gitconfig")
+        mock_config = self._mock_config()
+
+        with (
+            patch("macsetup.services.capture.CaptureService") as mock_cls,
+            patch("macsetup.models.config.save_config"),
+        ):
+            mock_cls.return_value.capture.return_value = mock_config
+            cmd_capture(args)
+
+            call_kwargs = mock_cls.call_args[1]
+            assert call_kwargs["dotfiles"] == ["~/.zshrc", "~/.gitconfig"]
+
+    def test_capture_parses_preferences_list(self, tmp_path):
+        """Comma-separated --preferences parsed into list."""
+        from macsetup.cli import cmd_capture
+
+        args = self._make_args(tmp_path, preferences="com.apple.dock, com.apple.finder")
+        mock_config = self._mock_config()
+
+        with (
+            patch("macsetup.services.capture.CaptureService") as mock_cls,
+            patch("macsetup.models.config.save_config"),
+        ):
+            mock_cls.return_value.capture.return_value = mock_config
+            cmd_capture(args)
+
+            call_kwargs = mock_cls.call_args[1]
+            assert call_kwargs["preference_domains"] == [
+                "com.apple.dock",
+                "com.apple.finder",
+            ]
+
+    def test_capture_custom_profile(self, tmp_path):
+        """Profile name forwarded to service."""
+        from macsetup.cli import cmd_capture
+
+        args = self._make_args(tmp_path, profile="work")
+        mock_config = self._mock_config()
+        mock_config.profiles = {"work": mock_config.profiles["default"]}
+
+        with (
+            patch("macsetup.services.capture.CaptureService") as mock_cls,
+            patch("macsetup.models.config.save_config"),
+        ):
+            mock_cls.return_value.capture.return_value = mock_config
+            cmd_capture(args)
+
+            call_kwargs = mock_cls.call_args[1]
+            assert call_kwargs["profile"] == "work"
+
+
+class TestCmdPreview:
+    """Tests for cmd_preview function."""
+
+    def _make_args(self, tmp_path, **overrides):
+        defaults = {
+            "resolved_config_dir": tmp_path,
+            "profile": "default",
+            "json": False,
+            "quiet": True,
+            "diff": False,
+        }
+        defaults.update(overrides)
+        return argparse.Namespace(**defaults)
+
+    def test_preview_missing_config(self, tmp_path):
+        """Exit 2 when config file doesn't exist."""
+        from macsetup.cli import cmd_preview
+
+        args = self._make_args(tmp_path)
+        result = cmd_preview(args)
+        assert result == 2
+
+    def test_preview_invalid_config(self, tmp_path):
+        """Exit 2 when YAML is invalid."""
+        from macsetup.cli import cmd_preview
+
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text("invalid: yaml: content:")
+
+        args = self._make_args(tmp_path)
+        result = cmd_preview(args)
+        assert result == 2
+
+    def test_preview_success(self, tmp_path, capsys):
+        """Mock PreviewService, verify exit 0 and text output."""
+        from macsetup.cli import cmd_preview
+
+        create_valid_config(tmp_path)
+        args = self._make_args(tmp_path, quiet=False)
+
+        with patch("macsetup.services.preview.PreviewService") as mock_cls:
+            mock_cls.return_value.preview.return_value = {
+                "taps": ["homebrew/core"],
+                "formulas": ["git"],
+                "casks": ["firefox"],
+                "mas": [],
+                "dotfiles": [],
+                "preferences": [],
+            }
+            result = cmd_preview(args)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Preview for profile" in captured.out
+
+    def test_preview_json_output(self, tmp_path, capsys):
+        """JSON structure includes {success, preview}."""
+        from macsetup.cli import cmd_preview
+
+        create_valid_config(tmp_path)
+        args = self._make_args(tmp_path, json=True)
+
+        with patch("macsetup.services.preview.PreviewService") as mock_cls:
+            mock_cls.return_value.preview.return_value = {
+                "taps": [],
+                "formulas": ["git"],
+                "casks": [],
+                "mas": [],
+                "dotfiles": [],
+                "preferences": [],
+            }
+            result = cmd_preview(args)
+
+        assert result == 0
+        output = json.loads(capsys.readouterr().out)
+        assert output["success"] is True
+        assert "preview" in output
+
+    def test_preview_diff_mode(self, tmp_path, capsys):
+        """--diff calls service.diff()."""
+        from macsetup.cli import cmd_preview
+
+        create_valid_config(tmp_path)
+        args = self._make_args(tmp_path, diff=True, quiet=False)
+
+        with patch("macsetup.services.preview.PreviewService") as mock_cls:
+            mock_service = mock_cls.return_value
+            mock_service.diff.return_value = {
+                "taps_to_install": ["tap1"],
+                "taps_installed": [],
+                "formulas_to_install": [],
+                "formulas_installed": [],
+                "casks_to_install": [],
+                "casks_installed": [],
+                "mas_to_install": [],
+                "mas_installed": [],
+            }
+            result = cmd_preview(args)
+
+        assert result == 0
+        mock_service.diff.assert_called_once()
+        captured = capsys.readouterr()
+        assert "Diff for profile" in captured.out
+
+    def test_preview_diff_json_output(self, tmp_path, capsys):
+        """Diff JSON structure includes {success, diff}."""
+        from macsetup.cli import cmd_preview
+
+        create_valid_config(tmp_path)
+        args = self._make_args(tmp_path, diff=True, json=True)
+
+        with patch("macsetup.services.preview.PreviewService") as mock_cls:
+            mock_cls.return_value.diff.return_value = {
+                "formulas_to_install": ["git"],
+                "formulas_installed": [],
+            }
+            result = cmd_preview(args)
+
+        assert result == 0
+        output = json.loads(capsys.readouterr().out)
+        assert output["success"] is True
+        assert "diff" in output
+
+    def test_preview_missing_profile(self, tmp_path):
+        """Exit 2 when profile not found."""
+        from macsetup.cli import cmd_preview
+
+        create_valid_config(tmp_path)
+        args = self._make_args(tmp_path, profile="nonexistent")
+        result = cmd_preview(args)
+        assert result == 2
+
+
+class TestCmdSync:
+    """Tests for cmd_sync function."""
+
+    def _make_args(self, tmp_path, **overrides):
+        defaults = {
+            "resolved_config_dir": tmp_path,
+            "json": False,
+            "quiet": True,
+            "sync_command": None,
+            "interval": 60,
+            "watch": True,
+        }
+        defaults.update(overrides)
+        return argparse.Namespace(**defaults)
+
+    def test_sync_start_success(self, tmp_path):
+        """Start sync returns exit 0 when not already running."""
+        from macsetup.cli import cmd_sync
+
+        args = self._make_args(tmp_path, sync_command="start")
+
+        with patch("macsetup.services.sync.SyncService") as mock_cls:
+            mock_service = mock_cls.return_value
+            mock_service.is_running.return_value = False
+            mock_service.sync_now.return_value = True
+            result = cmd_sync(args)
+
+        assert result == 0
+
+    def test_sync_start_already_running(self, tmp_path):
+        """Exit 1 when daemon already running."""
+        from macsetup.cli import cmd_sync
+
+        args = self._make_args(tmp_path, sync_command="start")
+
+        with patch("macsetup.services.sync.SyncService") as mock_cls:
+            mock_cls.return_value.is_running.return_value = True
+            result = cmd_sync(args)
+
+        assert result == 1
+
+    def test_sync_stop_success(self, tmp_path):
+        """Stop returns exit 0."""
+        from macsetup.cli import cmd_sync
+
+        args = self._make_args(tmp_path, sync_command="stop")
+
+        with patch("macsetup.services.sync.SyncService") as mock_cls:
+            mock_cls.return_value.stop.return_value = True
+            result = cmd_sync(args)
+
+        assert result == 0
+
+    def test_sync_stop_not_running(self, tmp_path):
+        """Stop when not running still returns 0."""
+        from macsetup.cli import cmd_sync
+
+        args = self._make_args(tmp_path, sync_command="stop")
+
+        with patch("macsetup.services.sync.SyncService") as mock_cls:
+            mock_cls.return_value.stop.return_value = False
+            result = cmd_sync(args)
+
+        assert result == 0
+
+    def test_sync_status(self, tmp_path, capsys):
+        """Status text output."""
+        from macsetup.cli import cmd_sync
+
+        args = self._make_args(tmp_path, sync_command="status", quiet=False)
+
+        with patch("macsetup.services.sync.SyncService") as mock_cls:
+            mock_cls.return_value.status.return_value = {
+                "running": True,
+                "interval_minutes": 60,
+                "config_dir": str(tmp_path),
+            }
+            result = cmd_sync(args)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "running" in captured.out.lower()
+
+    def test_sync_status_json(self, tmp_path, capsys):
+        """Status JSON includes running, interval_minutes, config_dir."""
+        from macsetup.cli import cmd_sync
+
+        status_data = {
+            "running": False,
+            "interval_minutes": 30,
+            "config_dir": str(tmp_path),
+        }
+        args = self._make_args(tmp_path, sync_command="status", json=True)
+
+        with patch("macsetup.services.sync.SyncService") as mock_cls:
+            mock_cls.return_value.status.return_value = status_data
+            result = cmd_sync(args)
+
+        assert result == 0
+        output = json.loads(capsys.readouterr().out)
+        assert output["running"] is False
+        assert output["interval_minutes"] == 30
+        assert "config_dir" in output
+
+    def test_sync_now_success(self, tmp_path):
+        """sync_now returns exit 0 on success."""
+        from macsetup.cli import cmd_sync
+
+        args = self._make_args(tmp_path, sync_command="now")
+
+        with patch("macsetup.services.sync.SyncService") as mock_cls:
+            mock_cls.return_value.sync_now.return_value = True
+            result = cmd_sync(args)
+
+        assert result == 0
+
+    def test_sync_now_failure(self, tmp_path):
+        """Exit 1 when sync_now fails."""
+        from macsetup.cli import cmd_sync
+
+        args = self._make_args(tmp_path, sync_command="now")
+
+        with patch("macsetup.services.sync.SyncService") as mock_cls:
+            mock_cls.return_value.sync_now.return_value = False
+            result = cmd_sync(args)
+
+        assert result == 1
+
+    def test_sync_passes_interval(self, tmp_path):
+        """--interval forwarded to SyncService."""
+        from macsetup.cli import cmd_sync
+
+        args = self._make_args(tmp_path, sync_command="status", interval=120)
+
+        with patch("macsetup.services.sync.SyncService") as mock_cls:
+            mock_cls.return_value.status.return_value = {
+                "running": False,
+                "interval_minutes": 120,
+                "config_dir": str(tmp_path),
+            }
+            cmd_sync(args)
+
+            call_kwargs = mock_cls.call_args[1]
+            assert call_kwargs["interval_minutes"] == 120
+
+    def test_sync_passes_watch(self, tmp_path):
+        """--watch forwarded to SyncService."""
+        from macsetup.cli import cmd_sync
+
+        args = self._make_args(tmp_path, sync_command="status", watch=False)
+
+        with patch("macsetup.services.sync.SyncService") as mock_cls:
+            mock_cls.return_value.status.return_value = {
+                "running": False,
+                "interval_minutes": 60,
+                "config_dir": str(tmp_path),
+            }
+            cmd_sync(args)
+
+            call_kwargs = mock_cls.call_args[1]
+            assert call_kwargs["watch"] is False
+
+
+class TestCmdProfile:
+    """Tests for cmd_profile function."""
+
+    def _make_args(self, tmp_path, **overrides):
+        defaults = {
+            "resolved_config_dir": tmp_path,
+            "json": False,
+            "quiet": True,
+            "profile_command": None,
+        }
+        defaults.update(overrides)
+        return argparse.Namespace(**defaults)
+
+    def test_profile_list(self, tmp_path, capsys):
+        """List profiles with text output."""
+        from macsetup.cli import cmd_profile
+
+        create_valid_config(
+            tmp_path,
+            profiles={
+                "default": {"applications": {}},
+                "work": {"applications": {}},
+            },
+        )
+        args = self._make_args(tmp_path, profile_command="list", quiet=False)
+        result = cmd_profile(args)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "default" in captured.out
+        assert "work" in captured.out
+
+    def test_profile_list_json(self, tmp_path, capsys):
+        """JSON structure includes {profiles}."""
+        from macsetup.cli import cmd_profile
+
+        create_valid_config(
+            tmp_path,
+            profiles={
+                "default": {"applications": {}},
+                "work": {"applications": {}},
+            },
+        )
+        args = self._make_args(tmp_path, profile_command="list", json=True)
+        result = cmd_profile(args)
+
+        assert result == 0
+        output = json.loads(capsys.readouterr().out)
+        assert "profiles" in output
+        assert "default" in output["profiles"]
+        assert "work" in output["profiles"]
+
+    def test_profile_show(self, tmp_path, capsys):
+        """Profile details displayed."""
+        from macsetup.cli import cmd_profile
+
+        create_valid_config(tmp_path)
+        args = self._make_args(tmp_path, profile_command="show", name="default", quiet=False)
+
+        with patch("macsetup.services.preview.PreviewService") as mock_cls:
+            mock_cls.return_value.preview.return_value = {
+                "taps": [],
+                "formulas": ["git"],
+                "casks": [],
+                "mas": [],
+                "dotfiles": [],
+                "preferences": [],
+            }
+            result = cmd_profile(args)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Profile: default" in captured.out
+
+    def test_profile_show_missing_profile(self, tmp_path):
+        """Exit 2 for unknown profile."""
+        from macsetup.cli import cmd_profile
+
+        create_valid_config(tmp_path)
+        args = self._make_args(tmp_path, profile_command="show", name="nonexistent")
+        result = cmd_profile(args)
+        assert result == 2
+
+    def test_profile_diff(self, tmp_path, capsys):
+        """Diff between two profiles."""
+        from macsetup.cli import cmd_profile
+
+        create_valid_config(
+            tmp_path,
+            profiles={
+                "default": {"applications": {}},
+                "work": {"applications": {}},
+            },
+        )
+        args = self._make_args(
+            tmp_path, profile_command="diff", name1="default", name2="work", quiet=False
+        )
+
+        with patch("macsetup.services.preview.PreviewService") as mock_cls:
+            mock_instance = MagicMock()
+            mock_instance.preview.return_value = {
+                "taps": [],
+                "formulas": [],
+                "casks": [],
+                "mas": [],
+                "dotfiles": [],
+                "preferences": [],
+            }
+            mock_cls.return_value = mock_instance
+            result = cmd_profile(args)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Comparing" in captured.out
+
+    def test_profile_missing_config(self, tmp_path):
+        """Exit 2 when config file doesn't exist."""
+        from macsetup.cli import cmd_profile
+
+        args = self._make_args(tmp_path, profile_command="list")
+        result = cmd_profile(args)
+        assert result == 2
+
+
+class TestCmdValidate:
+    """Tests for cmd_validate function."""
+
+    def _make_args(self, tmp_path, **overrides):
+        defaults = {
+            "resolved_config_dir": tmp_path,
+            "json": False,
+            "quiet": True,
+            "strict": False,
+        }
+        defaults.update(overrides)
+        return argparse.Namespace(**defaults)
+
+    def test_validate_valid_config(self, tmp_path, capsys):
+        """Exit 0 for valid config."""
+        from macsetup.cli import cmd_validate
+
+        create_valid_config(tmp_path)
+        args = self._make_args(tmp_path, quiet=False)
+
+        with patch("macsetup.models.schema.validate_config", return_value=[]):
+            result = cmd_validate(args)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "valid" in captured.out.lower()
+
+    def test_validate_valid_json(self, tmp_path, capsys):
+        """JSON output {valid: true} for valid config."""
+        from macsetup.cli import cmd_validate
+
+        create_valid_config(tmp_path)
+        args = self._make_args(tmp_path, json=True)
+
+        with patch("macsetup.models.schema.validate_config", return_value=[]):
+            result = cmd_validate(args)
+
+        assert result == 0
+        output = json.loads(capsys.readouterr().out)
+        assert output["valid"] is True
+
+    def test_validate_missing_file(self, tmp_path):
+        """Exit 2 when file doesn't exist."""
+        from macsetup.cli import cmd_validate
+
+        args = self._make_args(tmp_path)
+        result = cmd_validate(args)
+        assert result == 2
+
+    def test_validate_invalid_yaml(self, tmp_path):
+        """Exit 1 for YAML parse errors."""
+        from macsetup.cli import cmd_validate
+
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(":\n  :\n    - :\n      bad")
+        args = self._make_args(tmp_path)
+        result = cmd_validate(args)
+        assert result == 1
+
+    def test_validate_schema_errors(self, tmp_path, capsys):
+        """Exit 1 with error list for schema violations."""
+        from macsetup.cli import cmd_validate
+
+        create_valid_config(tmp_path)
+        args = self._make_args(tmp_path, quiet=False)
+
+        with patch(
+            "macsetup.models.schema.validate_config",
+            return_value=["$.version: missing", "$.metadata: invalid"],
+        ):
+            result = cmd_validate(args)
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "2 error" in captured.out
+
+    def test_validate_schema_errors_json(self, tmp_path, capsys):
+        """JSON {valid: false, errors: [...]} for schema violations."""
+        from macsetup.cli import cmd_validate
+
+        create_valid_config(tmp_path)
+        args = self._make_args(tmp_path, json=True)
+
+        with patch(
+            "macsetup.models.schema.validate_config",
+            return_value=["$.version: missing"],
+        ):
+            result = cmd_validate(args)
+
+        assert result == 1
+        output = json.loads(capsys.readouterr().out)
+        assert output["valid"] is False
+        assert len(output["errors"]) == 1
