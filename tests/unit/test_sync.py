@@ -1,5 +1,6 @@
 """Unit tests for sync service."""
 
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -102,8 +103,10 @@ class TestFileWatcher:
         watcher = FileWatcher(paths=[str(watched_file)])
         assert watcher.has_changes() is False
 
-        # Modify the file
+        # Modify the file and ensure mtime changes
         watched_file.write_text("modified content")
+        new_mtime = os.path.getmtime(str(watched_file)) + 2
+        os.utime(str(watched_file), (new_mtime, new_mtime))
         assert watcher.has_changes() is True
 
     def test_watcher_tracks_multiple_files(self, tmp_path):
@@ -134,6 +137,9 @@ class TestFileWatcher:
 
         watcher = FileWatcher(paths=[str(watched_file)])
         watched_file.write_text("modified")
+        # Ensure mtime changes even on low-resolution filesystems
+        new_mtime = os.path.getmtime(str(watched_file)) + 2
+        os.utime(str(watched_file), (new_mtime, new_mtime))
         assert watcher.has_changes() is True
 
         watcher.reset()
