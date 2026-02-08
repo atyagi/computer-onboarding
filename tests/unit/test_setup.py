@@ -80,10 +80,16 @@ class TestSetupService:
                                 with patch.object(
                                     service.homebrew, "is_cask_installed", return_value=True
                                 ):
-                                    with patch.object(service.defaults, "write") as mock_defaults:
-                                        mock_defaults.return_value = AdapterResult(success=True)
-                                        service.run()
-                                        mock_tap.assert_called()
+                                    with patch.object(
+                                        service.homebrew, "install_formula"
+                                    ) as mock_formula:
+                                        mock_formula.return_value = AdapterResult(success=True)
+                                        with patch.object(
+                                            service.defaults, "write"
+                                        ) as mock_defaults:
+                                            mock_defaults.return_value = AdapterResult(success=True)
+                                            service.run()
+                                            mock_tap.assert_called()
 
     def test_setup_service_installs_formulas(self, sample_config, tmp_path):
         """Setup service installs Homebrew formulas."""
@@ -132,14 +138,22 @@ class TestSetupService:
                                 with patch.object(
                                     service.homebrew, "is_cask_installed", return_value=False
                                 ):
-                                    with patch.object(service.dotfiles, "symlink") as mock_symlink:
-                                        mock_symlink.return_value = AdapterResult(success=True)
+                                    with patch.object(
+                                        service.homebrew, "install_formula"
+                                    ) as mock_formula:
+                                        mock_formula.return_value = AdapterResult(success=True)
                                         with patch.object(
-                                            service.defaults, "write"
-                                        ) as mock_defaults:
-                                            mock_defaults.return_value = AdapterResult(success=True)
-                                            service.run()
-                                            mock_cask.assert_called()
+                                            service.dotfiles, "symlink"
+                                        ) as mock_symlink:
+                                            mock_symlink.return_value = AdapterResult(success=True)
+                                            with patch.object(
+                                                service.defaults, "write"
+                                            ) as mock_defaults:
+                                                mock_defaults.return_value = AdapterResult(
+                                                    success=True
+                                                )
+                                                service.run()
+                                                mock_cask.assert_called()
 
     def test_setup_service_tracks_failed_items(self, sample_config, tmp_path):
         """Setup service tracks failed items."""
@@ -212,13 +226,21 @@ class TestSetupService:
                             with patch.object(
                                 service.homebrew, "is_cask_installed", return_value=True
                             ):
-                                with patch.object(service.dotfiles, "symlink") as mock_symlink:
-                                    mock_symlink.return_value = AdapterResult(success=True)
-                                    with patch.object(service.defaults, "write") as mock_defaults:
-                                        mock_defaults.return_value = AdapterResult(success=True)
-                                        result = service.run()
-                                        assert len(result.manual_apps) == 1
-                                        assert result.manual_apps[0].name == "Adobe Creative Cloud"
+                                with patch.object(
+                                    service.homebrew, "install_formula"
+                                ) as mock_formula:
+                                    mock_formula.return_value = AdapterResult(success=True)
+                                    with patch.object(service.dotfiles, "symlink") as mock_symlink:
+                                        mock_symlink.return_value = AdapterResult(success=True)
+                                        with patch.object(
+                                            service.defaults, "write"
+                                        ) as mock_defaults:
+                                            mock_defaults.return_value = AdapterResult(success=True)
+                                            result = service.run()
+                                            assert len(result.manual_apps) == 1
+                                            assert (
+                                                result.manual_apps[0].name == "Adobe Creative Cloud"
+                                            )
 
 
 class TestSetupStateModel:
