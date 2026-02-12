@@ -1,9 +1,22 @@
 """Dotfiles adapter for macsetup."""
 
 import shutil
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from macsetup.adapters import Adapter, AdapterResult
+from macsetup.models.config import Dotfile
+from macsetup.models.registry import KNOWN_DOTFILES
+
+MAX_DOTFILE_SIZE = 1_048_576  # 1 MB
+
+
+@dataclass
+class DiscoveryResult:
+    """Result of dotfile auto-discovery."""
+
+    discovered: list[Dotfile] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 class DotfilesAdapter(Adapter):
@@ -16,6 +29,64 @@ class DotfilesAdapter(Adapter):
     def get_tool_name(self) -> str:
         """Get the name of the tool."""
         return "dotfiles"
+
+    def discover_dotfiles(
+        self,
+        home: Path,
+        exclude: list[str] | None = None,
+        include_sensitive: bool = False,
+    ) -> DiscoveryResult:
+        """Discover well-known dotfiles present on the machine.
+
+        Args:
+            home: The user's home directory.
+            exclude: Dotfile paths to exclude from discovery.
+            include_sensitive: Whether to include sensitive dotfiles.
+
+        Returns:
+            DiscoveryResult with discovered Dotfile objects and any warnings.
+        """
+        exclude_set = set(exclude or [])
+        discovered: list[Dotfile] = []
+        warnings: list[str] = []
+
+        for entry in KNOWN_DOTFILES:
+            if not include_sensitive and entry.sensitive:
+                continue
+            if entry.path in exclude_set:
+                continue
+
+            full_path = home / entry.path
+
+            if not full_path.exists() and not full_path.is_symlink():
+                continue
+
+            if full_path.is_dir():
+                continue
+
+            try:
+                size = full_path.stat().st_size
+            except PermissionError:
+                warnings.append(f"Skipped {entry.path} (permission denied)")
+                continue
+            except (FileNotFoundError, OSError):
+                # Broken symlink or other OS error
+                continue
+
+            if size > MAX_DOTFILE_SIZE:
+                warnings.append(f"Skipped {entry.path} (exceeds 1 MB size limit)")
+                continue
+
+            # Verify we can read the file
+            try:
+                full_path.open("rb").close()
+            except PermissionError:
+                warnings.append(f"Skipped {entry.path} (permission denied)")
+                continue
+
+            discovered.append(Dotfile(path=entry.path))
+
+        return DiscoveryResult(discovered=discovered, warnings=warnings)
 
     def symlink(self, source: Path, target: Path, backup: bool = True) -> AdapterResult:
         """Create a symlink from target to source.

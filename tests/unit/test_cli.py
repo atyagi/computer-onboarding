@@ -497,6 +497,8 @@ class TestCmdCapture:
             "skip_apps": False,
             "skip_dotfiles": False,
             "skip_preferences": False,
+            "exclude_dotfiles": None,
+            "include_sensitive": False,
         }
         defaults.update(overrides)
         return argparse.Namespace(**defaults)
@@ -1065,6 +1067,106 @@ class TestCmdProfile:
         args = self._make_args(tmp_path, profile_command="list")
         result = cmd_profile(args)
         assert result == 2
+
+
+class TestCaptureExcludeDotfilesFlag:
+    """Tests for --exclude-dotfiles flag parsing (T016)."""
+
+    def test_exclude_dotfiles_parses_comma_separated(self):
+        """--exclude-dotfiles '.vimrc,.tmux.conf' parses to a list of paths."""
+        from macsetup.cli import create_parser
+
+        parser = create_parser()
+        args = parser.parse_args(["capture", "--exclude-dotfiles", ".vimrc,.tmux.conf"])
+        assert args.exclude_dotfiles == ".vimrc,.tmux.conf"
+
+    def test_exclude_dotfiles_passed_to_service(self, tmp_path):
+        """Exclusion list is passed through to CaptureService."""
+        from macsetup.cli import cmd_capture
+
+        args = argparse.Namespace(
+            resolved_config_dir=tmp_path,
+            profile="default",
+            json=False,
+            quiet=True,
+            dotfiles=None,
+            preferences=None,
+            skip_apps=False,
+            skip_dotfiles=False,
+            skip_preferences=False,
+            exclude_dotfiles=".vimrc,.tmux.conf",
+            include_sensitive=False,
+        )
+        mock_config = MagicMock()
+        mock_profile = MagicMock()
+        mock_profile.dotfiles = []
+        mock_profile.preferences = []
+        mock_profile.applications = MagicMock(homebrew=None, mas=[])
+        mock_config.profiles = {"default": mock_profile}
+
+        with (
+            patch("macsetup.services.capture.CaptureService") as mock_cls,
+            patch("macsetup.models.config.save_config"),
+        ):
+            mock_cls.return_value.capture.return_value = mock_config
+            cmd_capture(args)
+
+            call_kwargs = mock_cls.call_args[1]
+            assert call_kwargs["exclude_dotfiles"] == [".vimrc", ".tmux.conf"]
+
+
+class TestCaptureIncludeSensitiveFlag:
+    """Tests for --include-sensitive flag parsing (T017)."""
+
+    def test_include_sensitive_is_boolean_flag(self):
+        """--include-sensitive is a boolean flag."""
+        from macsetup.cli import create_parser
+
+        parser = create_parser()
+        args = parser.parse_args(["capture", "--include-sensitive"])
+        assert args.include_sensitive is True
+
+    def test_include_sensitive_defaults_to_false(self):
+        """--include-sensitive defaults to False."""
+        from macsetup.cli import create_parser
+
+        parser = create_parser()
+        args = parser.parse_args(["capture"])
+        assert args.include_sensitive is False
+
+    def test_include_sensitive_passed_to_service(self, tmp_path):
+        """Flag value is passed through to CaptureService."""
+        from macsetup.cli import cmd_capture
+
+        args = argparse.Namespace(
+            resolved_config_dir=tmp_path,
+            profile="default",
+            json=False,
+            quiet=True,
+            dotfiles=None,
+            preferences=None,
+            skip_apps=False,
+            skip_dotfiles=False,
+            skip_preferences=False,
+            exclude_dotfiles=None,
+            include_sensitive=True,
+        )
+        mock_config = MagicMock()
+        mock_profile = MagicMock()
+        mock_profile.dotfiles = []
+        mock_profile.preferences = []
+        mock_profile.applications = MagicMock(homebrew=None, mas=[])
+        mock_config.profiles = {"default": mock_profile}
+
+        with (
+            patch("macsetup.services.capture.CaptureService") as mock_cls,
+            patch("macsetup.models.config.save_config"),
+        ):
+            mock_cls.return_value.capture.return_value = mock_config
+            cmd_capture(args)
+
+            call_kwargs = mock_cls.call_args[1]
+            assert call_kwargs["include_sensitive"] is True
 
 
 class TestCmdValidate:

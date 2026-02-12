@@ -34,6 +34,8 @@ class CaptureService:
         skip_apps: bool = False,
         skip_dotfiles: bool = False,
         skip_preferences: bool = False,
+        exclude_dotfiles: list[str] | None = None,
+        include_sensitive: bool = False,
         progress_callback: Callable[[str, int, int], None] | None = None,
     ):
         self.config_dir = config_dir
@@ -43,6 +45,8 @@ class CaptureService:
         self.skip_apps = skip_apps
         self.skip_dotfiles = skip_dotfiles
         self.skip_preferences = skip_preferences
+        self.exclude_dotfiles = exclude_dotfiles or []
+        self.include_sensitive = include_sensitive
         self.progress_callback = progress_callback
 
         self.homebrew = HomebrewAdapter()
@@ -80,22 +84,51 @@ class CaptureService:
         return [MacApp(id=app_id, name=name) for app_id, name in installed]
 
     def _capture_dotfiles(self) -> list[Dotfile]:
-        """Capture specified dotfiles."""
-        if self.skip_dotfiles or not self.dotfile_paths:
+        """Capture dotfiles via auto-discovery and user-specified paths."""
+        if self.skip_dotfiles:
             return []
 
-        captured = []
         home = Path.home()
+        captured = []
 
-        for i, dotfile_path in enumerate(self.dotfile_paths):
-            self._report_progress(f"Capturing {dotfile_path}", i + 1, len(self.dotfile_paths))
+        # Auto-discover dotfiles from the registry
+        discovery = self.dotfiles_adapter.discover_dotfiles(
+            home=home,
+            exclude=self.exclude_dotfiles,
+            include_sensitive=self.include_sensitive,
+        )
+
+        # Report discovery progress
+        total_discovered = len(discovery.discovered)
+        for i, dotfile in enumerate(discovery.discovered):
+            self._report_progress(f"Discovered {dotfile.path}", i + 1, total_discovered)
+
+        # Report warnings for skipped files
+        for warning in discovery.warnings:
+            self._report_progress(f"[!] {warning}", 0, 0)
+
+        seen_paths: set[str] = set()
+
+        # Copy discovered dotfiles to config dir
+        for i, dotfile in enumerate(discovery.discovered):
+            self._report_progress(f"Capturing {dotfile.path}", i + 1, total_discovered)
+            source = home / dotfile.path
+            result = self.dotfiles_adapter.copy_to_config(source, self.config_dir, dotfile.path)
+            if result.success:
+                captured.append(dotfile)
+                seen_paths.add(dotfile.path)
+
+        # Process user-specified dotfiles (from --dotfiles flag), skip duplicates
+        for dotfile_path in self.dotfile_paths:
+            if dotfile_path in seen_paths:
+                continue
             source = home / dotfile_path
             if not source.exists():
                 continue
-
             result = self.dotfiles_adapter.copy_to_config(source, self.config_dir, dotfile_path)
             if result.success:
                 captured.append(Dotfile(path=dotfile_path))
+                seen_paths.add(dotfile_path)
 
         return captured
 
