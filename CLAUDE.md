@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 macOS Configuration Sync CLI - A tool to capture, store, and restore macOS machine configurations including Homebrew/App Store applications, dotfiles, and system preferences.
 
 ## Active Technologies
+- Python 3.14 with bash wrapper scripts + PyYAML, jsonschema, argparse (stdlib) — no new dependencies needed (002-auto-dotfile-discovery)
 
 - **Language**: Python 3.14 with bash wrapper scripts
 - **Package Manager**: uv (Python version + dependency management)
@@ -80,3 +81,6 @@ uv add --dev <package>
 <!-- MANUAL ADDITIONS START -->
 <!-- Add project-specific notes here that should persist across updates -->
 <!-- MANUAL ADDITIONS END -->
+
+## Recent Changes
+- 002-auto-dotfile-discovery: Added Python 3.14 with bash wrapper scripts + PyYAML, jsonschema, argparse (stdlib) — no new dependencies needed
