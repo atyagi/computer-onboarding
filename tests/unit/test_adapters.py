@@ -1,5 +1,6 @@
 """Unit tests for adapters."""
 
+import os
 from unittest.mock import MagicMock, patch
 
 
@@ -267,3 +268,160 @@ class TestDotfilesAdapter:
         path = tmp_path / ".missing"
 
         assert adapter.exists(path) is False
+
+
+class TestDotfilesAdapterDiscovery:
+    """Tests for dotfile auto-discovery (T005)."""
+
+    def test_discover_finds_existing_files(self, tmp_path):
+        """discover_dotfiles returns Dotfile objects for files that exist."""
+        from macsetup.adapters.dotfiles import DotfilesAdapter
+
+        adapter = DotfilesAdapter()
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".zshrc").write_text("# zshrc")
+        (home / ".gitconfig").write_text("[user]")
+
+        result = adapter.discover_dotfiles(home=home)
+        paths = [d.path for d in result.discovered]
+        assert ".zshrc" in paths
+        assert ".gitconfig" in paths
+
+    def test_discover_skips_missing_files(self, tmp_path):
+        """discover_dotfiles skips files that don't exist (FR-004)."""
+        from macsetup.adapters.dotfiles import DotfilesAdapter
+
+        adapter = DotfilesAdapter()
+        home = tmp_path / "home"
+        home.mkdir()
+        # Don't create any dotfiles
+
+        result = adapter.discover_dotfiles(home=home)
+        assert result.discovered == []
+
+    def test_discover_skips_directories(self, tmp_path):
+        """discover_dotfiles skips directories (FR-006)."""
+        from macsetup.adapters.dotfiles import DotfilesAdapter
+
+        adapter = DotfilesAdapter()
+        home = tmp_path / "home"
+        home.mkdir()
+        # Create .ssh/config as a directory instead of a file
+        ssh_config = home / ".ssh" / "config"
+        ssh_config.mkdir(parents=True)
+
+        result = adapter.discover_dotfiles(home=home, include_sensitive=True)
+        paths = [d.path for d in result.discovered]
+        assert ".ssh/config" not in paths
+
+    def test_discover_skips_unreadable_files_with_warning(self, tmp_path):
+        """discover_dotfiles skips unreadable files and reports warning (FR-005)."""
+        from macsetup.adapters.dotfiles import DotfilesAdapter
+
+        adapter = DotfilesAdapter()
+        home = tmp_path / "home"
+        home.mkdir()
+        unreadable = home / ".zshrc"
+        unreadable.write_text("content")
+        os.chmod(unreadable, 0o000)
+
+        try:
+            result = adapter.discover_dotfiles(home=home)
+            paths = [d.path for d in result.discovered]
+            assert ".zshrc" not in paths
+            assert any(".zshrc" in w for w in result.warnings)
+        finally:
+            os.chmod(unreadable, 0o644)
+
+    def test_discover_skips_oversized_files_with_warning(self, tmp_path):
+        """discover_dotfiles skips files over 1 MB with warning (FR-007)."""
+        from macsetup.adapters.dotfiles import DotfilesAdapter
+
+        adapter = DotfilesAdapter()
+        home = tmp_path / "home"
+        home.mkdir()
+        big_file = home / ".zshrc"
+        big_file.write_bytes(b"x" * (1_048_576 + 1))
+
+        result = adapter.discover_dotfiles(home=home)
+        paths = [d.path for d in result.discovered]
+        assert ".zshrc" not in paths
+        assert any(".zshrc" in w for w in result.warnings)
+
+    def test_discover_returns_dotfile_objects(self, tmp_path):
+        """discover_dotfiles returns proper Dotfile objects."""
+        from macsetup.adapters.dotfiles import DotfilesAdapter
+        from macsetup.models.config import Dotfile
+
+        adapter = DotfilesAdapter()
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".zshrc").write_text("# zsh")
+
+        result = adapter.discover_dotfiles(home=home)
+        assert len(result.discovered) >= 1
+        zshrc = next(d for d in result.discovered if d.path == ".zshrc")
+        assert isinstance(zshrc, Dotfile)
+
+    def test_discover_excludes_sensitive_by_default(self, tmp_path):
+        """discover_dotfiles excludes sensitive entries when include_sensitive=False."""
+        from macsetup.adapters.dotfiles import DotfilesAdapter
+
+        adapter = DotfilesAdapter()
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".ssh").mkdir()
+        (home / ".ssh" / "config").write_text("Host *")
+        (home / ".zshrc").write_text("# zsh")
+
+        result = adapter.discover_dotfiles(home=home, include_sensitive=False)
+        paths = [d.path for d in result.discovered]
+        assert ".zshrc" in paths
+        assert ".ssh/config" not in paths
+
+    def test_discover_includes_sensitive_when_requested(self, tmp_path):
+        """discover_dotfiles includes sensitive entries when include_sensitive=True."""
+        from macsetup.adapters.dotfiles import DotfilesAdapter
+
+        adapter = DotfilesAdapter()
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".ssh").mkdir()
+        (home / ".ssh" / "config").write_text("Host *")
+        (home / ".zshrc").write_text("# zsh")
+
+        result = adapter.discover_dotfiles(home=home, include_sensitive=True)
+        paths = [d.path for d in result.discovered]
+        assert ".zshrc" in paths
+        assert ".ssh/config" in paths
+
+    def test_discover_respects_exclude_list(self, tmp_path):
+        """discover_dotfiles skips paths in the exclude list."""
+        from macsetup.adapters.dotfiles import DotfilesAdapter
+
+        adapter = DotfilesAdapter()
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".zshrc").write_text("# zsh")
+        (home / ".gitconfig").write_text("[user]")
+
+        result = adapter.discover_dotfiles(home=home, exclude=[".zshrc"])
+        paths = [d.path for d in result.discovered]
+        assert ".zshrc" not in paths
+        assert ".gitconfig" in paths
+
+    def test_discover_follows_symlinks(self, tmp_path):
+        """discover_dotfiles includes symlinks (is_file() or is_symlink())."""
+        from macsetup.adapters.dotfiles import DotfilesAdapter
+
+        adapter = DotfilesAdapter()
+        home = tmp_path / "home"
+        home.mkdir()
+        real_file = tmp_path / "real_zshrc"
+        real_file.write_text("# real")
+        (home / ".zshrc").symlink_to(real_file)
+
+        result = adapter.discover_dotfiles(home=home)
+        paths = [d.path for d in result.discovered]
+        assert ".zshrc" in paths

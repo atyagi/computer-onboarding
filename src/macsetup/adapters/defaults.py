@@ -123,7 +123,9 @@ class DefaultsAdapter(Adapter):
         except subprocess.CalledProcessError as e:
             error = e.stderr.strip()
             if "does not exist" in error.lower():
-                error += f"\nRemediation: Key {key} or domain {domain} does not exist, no action needed."
+                error += (
+                    f"\nRemediation: Key {key} or domain {domain} does not exist, no action needed."
+                )
             else:
                 error += f"\nRemediation: Run 'defaults delete {domain} {key or ''}' manually to see detailed error."
             return AdapterResult(success=False, error=error)
@@ -169,7 +171,9 @@ class DefaultsAdapter(Adapter):
             if "does not exist" in error.lower():
                 error += f"\nRemediation: Domain {domain} does not exist. Check available domains with 'defaults domains'."
             elif "permission denied" in error.lower():
-                error += f"\nRemediation: Cannot write to {plist_path}. Check directory permissions."
+                error += (
+                    f"\nRemediation: Cannot write to {plist_path}. Check directory permissions."
+                )
             else:
                 error += f"\nRemediation: Run 'defaults export {domain} {plist_path}' manually to see detailed error."
             return AdapterResult(success=False, error=error)
