@@ -1,11 +1,12 @@
 """Unit tests for capture service."""
 
+from dataclasses import dataclass, field
 from unittest.mock import patch
 
 import pytest
 
 from macsetup.adapters import AdapterResult
-from macsetup.models.config import Configuration
+from macsetup.models.config import Configuration, Dotfile
 
 
 @pytest.fixture
@@ -123,6 +124,7 @@ class TestCaptureDotfiles:
 
     def test_capture_copies_specified_dotfiles(self, config_dir, tmp_path):
         """Capture service copies specified dotfiles to config dir."""
+        from macsetup.adapters.dotfiles import DiscoveryResult
         from macsetup.services.capture import CaptureService
 
         # Create a fake home dir with a dotfile
@@ -133,17 +135,24 @@ class TestCaptureDotfiles:
 
         service = CaptureService(config_dir=config_dir, dotfiles=[".zshrc"])
 
+        empty_discovery = DiscoveryResult(discovered=[], warnings=[])
+
         with patch.object(service.homebrew, "is_available", return_value=False):
             with patch.object(service.mas, "is_available", return_value=False):
                 with patch.object(service.defaults, "is_available", return_value=False):
                     with patch("macsetup.services.capture.Path.home", return_value=home):
                         with patch.object(
                             service.dotfiles_adapter,
-                            "copy_to_config",
-                            return_value=AdapterResult(success=True),
-                        ) as mock_copy:
-                            result = service.capture()
-                            mock_copy.assert_called_once()
+                            "discover_dotfiles",
+                            return_value=empty_discovery,
+                        ):
+                            with patch.object(
+                                service.dotfiles_adapter,
+                                "copy_to_config",
+                                return_value=AdapterResult(success=True),
+                            ) as mock_copy:
+                                result = service.capture()
+                                mock_copy.assert_called_once()
 
         profile = result.profiles["default"]
         assert len(profile.dotfiles) == 1
@@ -151,6 +160,7 @@ class TestCaptureDotfiles:
 
     def test_capture_skips_nonexistent_dotfiles(self, config_dir, tmp_path):
         """Capture service skips dotfiles that don't exist."""
+        from macsetup.adapters.dotfiles import DiscoveryResult
         from macsetup.services.capture import CaptureService
 
         home = tmp_path / "home"
@@ -158,14 +168,458 @@ class TestCaptureDotfiles:
 
         service = CaptureService(config_dir=config_dir, dotfiles=[".nonexistent"])
 
+        empty_discovery = DiscoveryResult(discovered=[], warnings=[])
+
         with patch.object(service.homebrew, "is_available", return_value=False):
             with patch.object(service.mas, "is_available", return_value=False):
                 with patch.object(service.defaults, "is_available", return_value=False):
                     with patch("macsetup.services.capture.Path.home", return_value=home):
-                        result = service.capture()
+                        with patch.object(
+                            service.dotfiles_adapter,
+                            "discover_dotfiles",
+                            return_value=empty_discovery,
+                        ):
+                            result = service.capture()
 
         profile = result.profiles["default"]
         assert len(profile.dotfiles) == 0
+
+
+class TestCaptureMergeAndDedup:
+    """Tests for merging auto-discovered with explicit dotfiles (T010)."""
+
+    def test_user_specified_dotfiles_added_to_discovered(self, config_dir, tmp_path):
+        """User-specified dotfiles are added to discovered list (FR-003)."""
+        from macsetup.adapters.dotfiles import DiscoveryResult
+        from macsetup.services.capture import CaptureService
+
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".my-custom-rc").write_text("# custom")
+
+        fake_result = DiscoveryResult(
+            discovered=[Dotfile(path=".zshrc")],
+            warnings=[],
+        )
+
+        service = CaptureService(config_dir=config_dir, dotfiles=[".my-custom-rc"])
+
+        with patch.object(service.homebrew, "is_available", return_value=False):
+            with patch.object(service.mas, "is_available", return_value=False):
+                with patch.object(service.defaults, "is_available", return_value=False):
+                    with patch("macsetup.services.capture.Path.home", return_value=home):
+                        with patch.object(
+                            service.dotfiles_adapter,
+                            "discover_dotfiles",
+                            return_value=fake_result,
+                        ):
+                            with patch.object(
+                                service.dotfiles_adapter,
+                                "copy_to_config",
+                                return_value=AdapterResult(success=True),
+                            ):
+                                result = service.capture()
+
+        profile = result.profiles["default"]
+        paths = [d.path for d in profile.dotfiles]
+        assert ".zshrc" in paths
+        assert ".my-custom-rc" in paths
+
+    def test_duplicate_paths_appear_only_once(self, config_dir, tmp_path):
+        """Duplicate paths (same in discovered and user-specified) appear only once."""
+        from macsetup.adapters.dotfiles import DiscoveryResult
+        from macsetup.services.capture import CaptureService
+
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".zshrc").write_text("# zsh")
+
+        fake_result = DiscoveryResult(
+            discovered=[Dotfile(path=".zshrc")],
+            warnings=[],
+        )
+
+        # User also specifies .zshrc explicitly
+        service = CaptureService(config_dir=config_dir, dotfiles=[".zshrc"])
+
+        with patch.object(service.homebrew, "is_available", return_value=False):
+            with patch.object(service.mas, "is_available", return_value=False):
+                with patch.object(service.defaults, "is_available", return_value=False):
+                    with patch("macsetup.services.capture.Path.home", return_value=home):
+                        with patch.object(
+                            service.dotfiles_adapter,
+                            "discover_dotfiles",
+                            return_value=fake_result,
+                        ):
+                            with patch.object(
+                                service.dotfiles_adapter,
+                                "copy_to_config",
+                                return_value=AdapterResult(success=True),
+                            ):
+                                result = service.capture()
+
+        profile = result.profiles["default"]
+        paths = [d.path for d in profile.dotfiles]
+        assert paths.count(".zshrc") == 1
+
+    def test_user_specified_nonexistent_still_attempted(self, config_dir, tmp_path):
+        """User-specified paths for non-existent files are still attempted."""
+        from macsetup.adapters.dotfiles import DiscoveryResult
+        from macsetup.services.capture import CaptureService
+
+        home = tmp_path / "home"
+        home.mkdir()
+
+        fake_result = DiscoveryResult(discovered=[], warnings=[])
+
+        service = CaptureService(config_dir=config_dir, dotfiles=[".nonexistent-custom"])
+
+        with patch.object(service.homebrew, "is_available", return_value=False):
+            with patch.object(service.mas, "is_available", return_value=False):
+                with patch.object(service.defaults, "is_available", return_value=False):
+                    with patch("macsetup.services.capture.Path.home", return_value=home):
+                        with patch.object(
+                            service.dotfiles_adapter,
+                            "discover_dotfiles",
+                            return_value=fake_result,
+                        ):
+                            result = service.capture()
+
+        profile = result.profiles["default"]
+        # Non-existent file is skipped (existing behavior preserved)
+        assert len(profile.dotfiles) == 0
+
+
+class TestCaptureExclusionFiltering:
+    """Tests for exclusion and sensitive filtering in capture service (T018)."""
+
+    def test_exclude_dotfiles_does_not_affect_user_specified(self, config_dir, tmp_path):
+        """--exclude-dotfiles does not affect user-specified --dotfiles entries."""
+        from macsetup.adapters.dotfiles import DiscoveryResult
+        from macsetup.services.capture import CaptureService
+
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".vimrc").write_text("set nocp")
+
+        # Discovery returns nothing (vimrc excluded), but user explicitly specifies .vimrc
+        fake_result = DiscoveryResult(discovered=[], warnings=[])
+
+        service = CaptureService(
+            config_dir=config_dir,
+            dotfiles=[".vimrc"],
+            exclude_dotfiles=[".vimrc"],
+            include_sensitive=False,
+        )
+
+        with patch.object(service.homebrew, "is_available", return_value=False):
+            with patch.object(service.mas, "is_available", return_value=False):
+                with patch.object(service.defaults, "is_available", return_value=False):
+                    with patch("macsetup.services.capture.Path.home", return_value=home):
+                        with patch.object(
+                            service.dotfiles_adapter,
+                            "discover_dotfiles",
+                            return_value=fake_result,
+                        ):
+                            with patch.object(
+                                service.dotfiles_adapter,
+                                "copy_to_config",
+                                return_value=AdapterResult(success=True),
+                            ):
+                                result = service.capture()
+
+        profile = result.profiles["default"]
+        paths = [d.path for d in profile.dotfiles]
+        # User-specified .vimrc should still be captured even though it's excluded from discovery
+        assert ".vimrc" in paths
+
+    def test_exclude_and_sensitive_passed_to_discover(self, config_dir, tmp_path):
+        """exclude_dotfiles and include_sensitive are passed through to discover_dotfiles."""
+        from macsetup.adapters.dotfiles import DiscoveryResult
+        from macsetup.services.capture import CaptureService
+
+        home = tmp_path / "home"
+        home.mkdir()
+
+        fake_result = DiscoveryResult(discovered=[], warnings=[])
+
+        service = CaptureService(
+            config_dir=config_dir,
+            exclude_dotfiles=[".vimrc"],
+            include_sensitive=True,
+        )
+
+        with patch.object(service.homebrew, "is_available", return_value=False):
+            with patch.object(service.mas, "is_available", return_value=False):
+                with patch.object(service.defaults, "is_available", return_value=False):
+                    with patch("macsetup.services.capture.Path.home", return_value=home):
+                        with patch.object(
+                            service.dotfiles_adapter,
+                            "discover_dotfiles",
+                            return_value=fake_result,
+                        ) as mock_discover:
+                            service.capture()
+
+                            mock_discover.assert_called_once_with(
+                                home=home,
+                                exclude=[".vimrc"],
+                                include_sensitive=True,
+                            )
+
+
+class TestCaptureDiscoveryProgress:
+    """Tests for discovery progress reporting (T013)."""
+
+    def test_progress_callback_called_for_discovered_dotfiles(self, config_dir, tmp_path):
+        """Progress callback is called for each discovered dotfile with 'Discovered' message (FR-010)."""
+        from macsetup.adapters.dotfiles import DiscoveryResult
+        from macsetup.services.capture import CaptureService
+
+        home = tmp_path / "home"
+        home.mkdir()
+
+        fake_result = DiscoveryResult(
+            discovered=[Dotfile(path=".zshrc"), Dotfile(path=".gitconfig")],
+            warnings=[],
+        )
+
+        progress_messages = []
+
+        def track_progress(message, current, total):
+            progress_messages.append(message)
+
+        service = CaptureService(
+            config_dir=config_dir,
+            progress_callback=track_progress,
+        )
+
+        with patch.object(service.homebrew, "is_available", return_value=False):
+            with patch.object(service.mas, "is_available", return_value=False):
+                with patch.object(service.defaults, "is_available", return_value=False):
+                    with patch("macsetup.services.capture.Path.home", return_value=home):
+                        with patch.object(
+                            service.dotfiles_adapter,
+                            "discover_dotfiles",
+                            return_value=fake_result,
+                        ):
+                            with patch.object(
+                                service.dotfiles_adapter,
+                                "copy_to_config",
+                                return_value=AdapterResult(success=True),
+                            ):
+                                service.capture()
+
+        discovered_msgs = [m for m in progress_messages if "Discovered" in m]
+        assert len(discovered_msgs) == 2
+        assert any(".zshrc" in m for m in discovered_msgs)
+        assert any(".gitconfig" in m for m in discovered_msgs)
+
+    def test_warning_messages_reported_for_skipped_files(self, config_dir, tmp_path):
+        """Warning messages are reported for skipped files (oversized, unreadable)."""
+        from macsetup.adapters.dotfiles import DiscoveryResult
+        from macsetup.services.capture import CaptureService
+
+        home = tmp_path / "home"
+        home.mkdir()
+
+        fake_result = DiscoveryResult(
+            discovered=[],
+            warnings=[
+                "Skipped .zsh_history (exceeds 1 MB size limit)",
+                "Skipped .config/foo (permission denied)",
+            ],
+        )
+
+        progress_messages = []
+
+        def track_progress(message, current, total):
+            progress_messages.append(message)
+
+        service = CaptureService(
+            config_dir=config_dir,
+            progress_callback=track_progress,
+        )
+
+        with patch.object(service.homebrew, "is_available", return_value=False):
+            with patch.object(service.mas, "is_available", return_value=False):
+                with patch.object(service.defaults, "is_available", return_value=False):
+                    with patch("macsetup.services.capture.Path.home", return_value=home):
+                        with patch.object(
+                            service.dotfiles_adapter,
+                            "discover_dotfiles",
+                            return_value=fake_result,
+                        ):
+                            service.capture()
+
+        warning_msgs = [m for m in progress_messages if "[!]" in m]
+        assert len(warning_msgs) == 2
+
+    def test_skip_dotfiles_produces_no_discovery_progress(self, config_dir, tmp_path):
+        """--skip-dotfiles produces no discovery progress output."""
+        from macsetup.services.capture import CaptureService
+
+        home = tmp_path / "home"
+        home.mkdir()
+
+        progress_messages = []
+
+        def track_progress(message, current, total):
+            progress_messages.append(message)
+
+        service = CaptureService(
+            config_dir=config_dir,
+            skip_dotfiles=True,
+            progress_callback=track_progress,
+        )
+
+        with patch.object(service.homebrew, "is_available", return_value=False):
+            with patch.object(service.mas, "is_available", return_value=False):
+                with patch.object(service.defaults, "is_available", return_value=False):
+                    with patch("macsetup.services.capture.Path.home", return_value=home):
+                        service.capture()
+
+        discovered_msgs = [m for m in progress_messages if "Discovered" in m]
+        assert len(discovered_msgs) == 0
+
+
+class TestCaptureAutoDiscovery:
+    """Tests for auto-discovery integration in capture service (T006)."""
+
+    def test_capture_calls_discovery_and_includes_dotfiles(self, config_dir, tmp_path):
+        """Capture service calls discover_dotfiles and includes results in output."""
+        from macsetup.services.capture import CaptureService
+
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".zshrc").write_text("# zsh")
+
+        @dataclass
+        class FakeDiscoveryResult:
+            discovered: list[Dotfile] = field(default_factory=list)
+            warnings: list[str] = field(default_factory=list)
+
+        fake_result = FakeDiscoveryResult(
+            discovered=[Dotfile(path=".zshrc")],
+            warnings=[],
+        )
+
+        service = CaptureService(config_dir=config_dir)
+
+        with patch.object(service.homebrew, "is_available", return_value=False):
+            with patch.object(service.mas, "is_available", return_value=False):
+                with patch.object(service.defaults, "is_available", return_value=False):
+                    with patch("macsetup.services.capture.Path.home", return_value=home):
+                        with patch.object(
+                            service.dotfiles_adapter,
+                            "discover_dotfiles",
+                            return_value=fake_result,
+                        ) as mock_discover:
+                            with patch.object(
+                                service.dotfiles_adapter,
+                                "copy_to_config",
+                                return_value=AdapterResult(success=True),
+                            ):
+                                result = service.capture()
+                                mock_discover.assert_called_once()
+
+        profile = result.profiles["default"]
+        assert len(profile.dotfiles) >= 1
+        assert any(d.path == ".zshrc" for d in profile.dotfiles)
+
+    def test_capture_skip_dotfiles_disables_discovery(self, config_dir, tmp_path):
+        """--skip-dotfiles disables auto-discovery (FR-009)."""
+        from macsetup.services.capture import CaptureService
+
+        home = tmp_path / "home"
+        home.mkdir()
+        (home / ".zshrc").write_text("# zsh")
+
+        service = CaptureService(config_dir=config_dir, skip_dotfiles=True)
+
+        with patch.object(service.homebrew, "is_available", return_value=False):
+            with patch.object(service.mas, "is_available", return_value=False):
+                with patch.object(service.defaults, "is_available", return_value=False):
+                    with patch("macsetup.services.capture.Path.home", return_value=home):
+                        with patch.object(
+                            service.dotfiles_adapter,
+                            "discover_dotfiles",
+                        ) as mock_discover:
+                            result = service.capture()
+                            mock_discover.assert_not_called()
+
+        profile = result.profiles["default"]
+        assert profile.dotfiles == []
+
+    def test_capture_empty_discovery_produces_empty_list(self, config_dir, tmp_path):
+        """Empty discovery (no dotfiles found) produces empty list without errors."""
+        from macsetup.services.capture import CaptureService
+
+        home = tmp_path / "home"
+        home.mkdir()
+
+        @dataclass
+        class FakeDiscoveryResult:
+            discovered: list[Dotfile] = field(default_factory=list)
+            warnings: list[str] = field(default_factory=list)
+
+        fake_result = FakeDiscoveryResult(discovered=[], warnings=[])
+
+        service = CaptureService(config_dir=config_dir)
+
+        with patch.object(service.homebrew, "is_available", return_value=False):
+            with patch.object(service.mas, "is_available", return_value=False):
+                with patch.object(service.defaults, "is_available", return_value=False):
+                    with patch("macsetup.services.capture.Path.home", return_value=home):
+                        with patch.object(
+                            service.dotfiles_adapter,
+                            "discover_dotfiles",
+                            return_value=fake_result,
+                        ):
+                            result = service.capture()
+
+        profile = result.profiles["default"]
+        assert profile.dotfiles == []
+
+    def test_capture_auto_discovers_without_dotfiles_flag(self, config_dir, tmp_path):
+        """Capture auto-discovers dotfiles even when no --dotfiles flag is passed."""
+        from macsetup.services.capture import CaptureService
+
+        home = tmp_path / "home"
+        home.mkdir()
+
+        @dataclass
+        class FakeDiscoveryResult:
+            discovered: list[Dotfile] = field(default_factory=list)
+            warnings: list[str] = field(default_factory=list)
+
+        fake_result = FakeDiscoveryResult(
+            discovered=[Dotfile(path=".gitconfig")],
+            warnings=[],
+        )
+
+        # No dotfiles argument passed — auto-discovery should still run
+        service = CaptureService(config_dir=config_dir)
+
+        with patch.object(service.homebrew, "is_available", return_value=False):
+            with patch.object(service.mas, "is_available", return_value=False):
+                with patch.object(service.defaults, "is_available", return_value=False):
+                    with patch("macsetup.services.capture.Path.home", return_value=home):
+                        with patch.object(
+                            service.dotfiles_adapter,
+                            "discover_dotfiles",
+                            return_value=fake_result,
+                        ) as mock_discover:
+                            with patch.object(
+                                service.dotfiles_adapter,
+                                "copy_to_config",
+                                return_value=AdapterResult(success=True),
+                            ):
+                                result = service.capture()
+                                mock_discover.assert_called_once()
+
+        profile = result.profiles["default"]
+        assert len(profile.dotfiles) >= 1
+        assert any(d.path == ".gitconfig" for d in profile.dotfiles)
 
 
 class TestCapturePreferences:

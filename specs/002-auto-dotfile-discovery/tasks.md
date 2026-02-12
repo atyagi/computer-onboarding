@@ -17,7 +17,7 @@
 
 **Purpose**: No new project initialization needed — project already exists. This phase verifies existing tests pass before making changes.
 
-- [ ] T001 Verify all existing tests pass by running `uv run pytest` and `uv run ruff check .`
+- [x] T001 Verify all existing tests pass by running `uv run pytest` and `uv run ruff check .`
 
 ---
 
@@ -31,12 +31,12 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T002 Write registry data integrity tests in tests/unit/test_registry.py: verify KNOWN_DOTFILES contains all required paths from FR-011 and FR-013, all paths are unique, no path starts with `/` or contains `..`, all entries have non-empty category, sensitive entries have `sensitive=True`, default entries have `sensitive=False`
+- [x] T002 Write registry data integrity tests in tests/unit/test_registry.py: verify KNOWN_DOTFILES contains all required paths from FR-011 and FR-013, all paths are unique, no path starts with `/` or contains `..`, all entries have non-empty category, sensitive entries have `sensitive=True`, default entries have `sensitive=False`
 
 ### Implementation for Foundation
 
-- [ ] T003 Create DotfileRegistryEntry dataclass and KNOWN_DOTFILES list in src/macsetup/models/registry.py per data-model.md: fields are `path` (str), `category` (str), `sensitive` (bool, default False). Populate with all ~35 entries from research.md (shell, git, editor, terminal, dev-tools as default; ssh, cloud, security, secrets as sensitive)
-- [ ] T004 Run `uv run pytest tests/unit/test_registry.py` to verify T002 tests pass with T003 implementation
+- [x] T003 Create DotfileRegistryEntry dataclass and KNOWN_DOTFILES list in src/macsetup/models/registry.py per data-model.md: fields are `path` (str), `category` (str), `sensitive` (bool, default False). Populate with all ~35 entries from research.md (shell, git, editor, terminal, dev-tools as default; ssh, cloud, security, secrets as sensitive)
+- [x] T004 Run `uv run pytest tests/unit/test_registry.py` to verify T002 tests pass with T003 implementation
 
 **Checkpoint**: Registry exists, is tested, and contains all required dotfile paths. Foundation ready.
 
@@ -52,14 +52,14 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T005 [P] [US1] Write unit tests for `DotfilesAdapter.discover_dotfiles()` in tests/unit/test_adapters.py: test discovery finds files that exist, skips files that don't exist (FR-004), skips directories (FR-006), skips unreadable files with warning (FR-005), skips files over 1 MB with warning (FR-007), returns list of Dotfile objects, only returns default (non-sensitive) entries when include_sensitive=False
-- [ ] T006 [P] [US1] Write unit tests for auto-discovery integration in tests/unit/test_capture.py: test that `CaptureService.capture()` calls discovery and includes discovered dotfiles in output, test that `--skip-dotfiles` disables discovery (FR-009), test that empty discovery (no dotfiles found) produces empty list without errors
+- [x] T005 [P] [US1] Write unit tests for `DotfilesAdapter.discover_dotfiles()` in tests/unit/test_adapters.py: test discovery finds files that exist, skips files that don't exist (FR-004), skips directories (FR-006), skips unreadable files with warning (FR-005), skips files over 1 MB with warning (FR-007), returns list of Dotfile objects, only returns default (non-sensitive) entries when include_sensitive=False
+- [x] T006 [P] [US1] Write unit tests for auto-discovery integration in tests/unit/test_capture.py: test that `CaptureService.capture()` calls discovery and includes discovered dotfiles in output, test that `--skip-dotfiles` disables discovery (FR-009), test that empty discovery (no dotfiles found) produces empty list without errors
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Implement `discover_dotfiles(home: Path, exclude: list[str], include_sensitive: bool) -> list[Dotfile]` method in src/macsetup/adapters/dotfiles.py: iterate KNOWN_DOTFILES registry, filter by sensitive flag, check `Path.exists()` for each, skip directories (`Path.is_file()` or `Path.is_symlink()`), skip unreadable files (catch `PermissionError`), skip files > 1,048,576 bytes (`Path.stat().st_size`), return list of `Dotfile(path=entry.path)` for each found file
-- [ ] T008 [US1] Modify `CaptureService._capture_dotfiles()` in src/macsetup/services/capture.py to call `self.dotfiles_adapter.discover_dotfiles()` automatically when `skip_dotfiles` is False, passing `home=Path.home()`, `exclude=[]`, `include_sensitive=False`. Use discovered dotfiles as the base list instead of only `self.dotfile_paths`
-- [ ] T009 [US1] Run `uv run pytest tests/unit/test_adapters.py tests/unit/test_capture.py` to verify all US1 tests pass
+- [x] T007 [US1] Implement `discover_dotfiles(home: Path, exclude: list[str], include_sensitive: bool) -> list[Dotfile]` method in src/macsetup/adapters/dotfiles.py: iterate KNOWN_DOTFILES registry, filter by sensitive flag, check `Path.exists()` for each, skip directories (`Path.is_file()` or `Path.is_symlink()`), skip unreadable files (catch `PermissionError`), skip files > 1,048,576 bytes (`Path.stat().st_size`), return list of `Dotfile(path=entry.path)` for each found file
+- [x] T008 [US1] Modify `CaptureService._capture_dotfiles()` in src/macsetup/services/capture.py to call `self.dotfiles_adapter.discover_dotfiles()` automatically when `skip_dotfiles` is False, passing `home=Path.home()`, `exclude=[]`, `include_sensitive=False`. Use discovered dotfiles as the base list instead of only `self.dotfile_paths`
+- [x] T009 [US1] Run `uv run pytest tests/unit/test_adapters.py tests/unit/test_capture.py` to verify all US1 tests pass
 
 **Checkpoint**: `macsetup capture` now auto-discovers dotfiles. US1 acceptance scenarios are met.
 
@@ -75,12 +75,12 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [US2] Write unit tests for merge and de-duplication in tests/unit/test_capture.py: test that user-specified dotfiles are added to discovered list (FR-003), test that duplicate paths (same path in both discovered and user-specified) appear only once, test that user-specified paths for non-existent files are still attempted (existing behavior preserved)
+- [x] T010 [US2] Write unit tests for merge and de-duplication in tests/unit/test_capture.py: test that user-specified dotfiles are added to discovered list (FR-003), test that duplicate paths (same path in both discovered and user-specified) appear only once, test that user-specified paths for non-existent files are still attempted (existing behavior preserved)
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Update `CaptureService._capture_dotfiles()` in src/macsetup/services/capture.py to merge `discovered_dotfiles + self.dotfile_paths` with de-duplication by path. Build a `seen_paths` set, iterate discovered first then user-specified, skip any path already in `seen_paths`
-- [ ] T012 [US2] Run `uv run pytest tests/unit/test_capture.py` to verify all US2 tests pass alongside existing US1 tests
+- [x] T011 [US2] Update `CaptureService._capture_dotfiles()` in src/macsetup/services/capture.py to merge `discovered_dotfiles + self.dotfile_paths` with de-duplication by path. Build a `seen_paths` set, iterate discovered first then user-specified, skip any path already in `seen_paths`
+- [x] T012 [US2] Run `uv run pytest tests/unit/test_capture.py` to verify all US2 tests pass alongside existing US1 tests
 
 **Checkpoint**: Auto-discovery and explicit `--dotfiles` work together. US2 acceptance scenarios are met.
 
@@ -96,12 +96,12 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T013 [US3] Write unit tests for discovery progress reporting in tests/unit/test_capture.py: test that progress callback is called for each discovered dotfile with "Discovered" message (FR-010), test that warning messages are reported for skipped files (oversized, unreadable), test that `--skip-dotfiles` produces no discovery progress output
+- [x] T013 [US3] Write unit tests for discovery progress reporting in tests/unit/test_capture.py: test that progress callback is called for each discovered dotfile with "Discovered" message (FR-010), test that warning messages are reported for skipped files (oversized, unreadable), test that `--skip-dotfiles` produces no discovery progress output
 
 ### Implementation for User Story 3
 
-- [ ] T014 [US3] Update `CaptureService._capture_dotfiles()` in src/macsetup/services/capture.py to call `self._report_progress()` with "Discovered {path}" for each auto-discovered dotfile, and "[!] Skipped {path} ({reason})" for files skipped due to size or permission issues. Pass warning information from `discover_dotfiles()` return value (extend return type or add a warnings list)
-- [ ] T015 [US3] Run `uv run pytest tests/unit/test_capture.py` to verify all US3 tests pass alongside US1 and US2 tests
+- [x] T014 [US3] Update `CaptureService._capture_dotfiles()` in src/macsetup/services/capture.py to call `self._report_progress()` with "Discovered {path}" for each auto-discovered dotfile, and "[!] Skipped {path} ({reason})" for files skipped due to size or permission issues. Pass warning information from `discover_dotfiles()` return value (extend return type or add a warnings list)
+- [x] T015 [US3] Run `uv run pytest tests/unit/test_capture.py` to verify all US3 tests pass alongside US1 and US2 tests
 
 **Checkpoint**: Users see discovery progress in output. US3 acceptance scenarios are met.
 
@@ -117,15 +117,15 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T016 [P] [US4] Write unit tests for `--exclude-dotfiles` flag parsing in tests/unit/test_cli.py: test that `--exclude-dotfiles ".vimrc,.tmux.conf"` parses to a list of paths, test that exclusion list is passed through to CaptureService
-- [ ] T017 [P] [US4] Write unit tests for `--include-sensitive` flag parsing in tests/unit/test_cli.py: test that `--include-sensitive` is a boolean flag, test that it defaults to False, test that the flag value is passed through to CaptureService
-- [ ] T018 [P] [US4] Write unit tests for exclusion and sensitive filtering in tests/unit/test_adapters.py: test that `discover_dotfiles(exclude=[".vimrc"])` skips `.vimrc` even if present on disk, test that `discover_dotfiles(include_sensitive=True)` includes sensitive entries, test that `discover_dotfiles(include_sensitive=False)` excludes sensitive entries, test that `--exclude-dotfiles` does not affect user-specified `--dotfiles` entries
+- [x] T016 [P] [US4] Write unit tests for `--exclude-dotfiles` flag parsing in tests/unit/test_cli.py: test that `--exclude-dotfiles ".vimrc,.tmux.conf"` parses to a list of paths, test that exclusion list is passed through to CaptureService
+- [x] T017 [P] [US4] Write unit tests for `--include-sensitive` flag parsing in tests/unit/test_cli.py: test that `--include-sensitive` is a boolean flag, test that it defaults to False, test that the flag value is passed through to CaptureService
+- [x] T018 [P] [US4] Write unit tests for exclusion and sensitive filtering in tests/unit/test_adapters.py: test that `discover_dotfiles(exclude=[".vimrc"])` skips `.vimrc` even if present on disk, test that `discover_dotfiles(include_sensitive=True)` includes sensitive entries, test that `discover_dotfiles(include_sensitive=False)` excludes sensitive entries, test that `--exclude-dotfiles` does not affect user-specified `--dotfiles` entries
 
 ### Implementation for User Story 4
 
-- [ ] T019 [US4] Add `--exclude-dotfiles` and `--include-sensitive` flags to capture subparser in src/macsetup/cli.py: `--exclude-dotfiles` takes comma-separated PATHS metavar, `--include-sensitive` is `store_true` boolean. Parse exclusion list in `cmd_capture()` and pass both values to CaptureService constructor
-- [ ] T020 [US4] Add `exclude_dotfiles: list[str]` and `include_sensitive: bool` parameters to `CaptureService.__init__()` in src/macsetup/services/capture.py, defaulting to `[]` and `False`. Pass them through to `self.dotfiles_adapter.discover_dotfiles()` call
-- [ ] T021 [US4] Run `uv run pytest tests/unit/test_cli.py tests/unit/test_adapters.py tests/unit/test_capture.py` to verify all US4 tests pass alongside all previous tests
+- [x] T019 [US4] Add `--exclude-dotfiles` and `--include-sensitive` flags to capture subparser in src/macsetup/cli.py: `--exclude-dotfiles` takes comma-separated PATHS metavar, `--include-sensitive` is `store_true` boolean. Parse exclusion list in `cmd_capture()` and pass both values to CaptureService constructor
+- [x] T020 [US4] Add `exclude_dotfiles: list[str]` and `include_sensitive: bool` parameters to `CaptureService.__init__()` in src/macsetup/services/capture.py, defaulting to `[]` and `False`. Pass them through to `self.dotfiles_adapter.discover_dotfiles()` call
+- [x] T021 [US4] Run `uv run pytest tests/unit/test_cli.py tests/unit/test_adapters.py tests/unit/test_capture.py` to verify all US4 tests pass alongside all previous tests
 
 **Checkpoint**: Users can exclude dotfiles and opt into sensitive ones. US4 acceptance scenarios are met.
 
@@ -135,10 +135,10 @@
 
 **Purpose**: Final validation, linting, and full test suite verification.
 
-- [ ] T022 Run full test suite `uv run pytest` to verify all tests pass across all user stories
-- [ ] T023 Run `uv run ruff check .` and `uv run ruff format --check .` to verify linting and formatting pass with zero warnings
-- [ ] T024 Verify `macsetup capture --help` documents `--exclude-dotfiles` and `--include-sensitive` flags
-- [ ] T025 Run quickstart.md validation: manually verify each command example in specs/002-auto-dotfile-discovery/quickstart.md produces expected behavior
+- [x] T022 Run full test suite `uv run pytest` to verify all tests pass across all user stories
+- [x] T023 Run `uv run ruff check .` and `uv run ruff format --check .` to verify linting and formatting pass with zero warnings
+- [x] T024 Verify `macsetup capture --help` documents `--exclude-dotfiles` and `--include-sensitive` flags
+- [x] T025 Run quickstart.md validation: manually verify each command example in specs/002-auto-dotfile-discovery/quickstart.md produces expected behavior
 
 ---
 
