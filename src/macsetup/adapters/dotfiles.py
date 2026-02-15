@@ -55,7 +55,9 @@ class DotfilesAdapter(Adapter):
             return AdapterResult(success=True, message=f"Symlinked {target} -> {source}")
         except PermissionError as e:
             error = str(e)
-            error += f"\nRemediation: Permission denied for {target}. Check file/directory permissions."
+            error += (
+                f"\nRemediation: Permission denied for {target}. Check file/directory permissions."
+            )
             return AdapterResult(success=False, error=error)
         except FileNotFoundError as e:
             error = str(e)
@@ -98,7 +100,9 @@ class DotfilesAdapter(Adapter):
             return AdapterResult(success=True, message=f"Copied {source} to {target}")
         except PermissionError as e:
             error = str(e)
-            error += f"\nRemediation: Permission denied for {target}. Check file/directory permissions."
+            error += (
+                f"\nRemediation: Permission denied for {target}. Check file/directory permissions."
+            )
             return AdapterResult(success=False, error=error)
         except FileNotFoundError as e:
             error = str(e)
@@ -106,7 +110,9 @@ class DotfilesAdapter(Adapter):
             return AdapterResult(success=False, error=error)
         except Exception as e:
             error = str(e)
-            error += f"\nRemediation: Failed to copy {source} to {target}. Check paths and permissions."
+            error += (
+                f"\nRemediation: Failed to copy {source} to {target}. Check paths and permissions."
+            )
             return AdapterResult(success=False, error=error)
 
     def exists(self, path: Path) -> bool:
@@ -137,9 +143,7 @@ class DotfilesAdapter(Adapter):
         except Exception:
             return False
 
-    def copy_to_config(
-        self, source: Path, config_dir: Path, relative_path: str
-    ) -> AdapterResult:
+    def copy_to_config(self, source: Path, config_dir: Path, relative_path: str) -> AdapterResult:
         """Copy a dotfile from home to config directory.
 
         Args:
@@ -159,15 +163,15 @@ class DotfilesAdapter(Adapter):
                 source = source.resolve()
 
             if not source.exists():
-                return AdapterResult(
-                    success=False, error=f"Source file does not exist: {source}"
-                )
+                return AdapterResult(success=False, error=f"Source file does not exist: {source}")
 
             shutil.copy2(source, target)
             return AdapterResult(success=True, message=f"Copied {source} to {target}")
         except PermissionError as e:
             error = str(e)
-            error += f"\nRemediation: Permission denied. Check file/directory permissions for {target}."
+            error += (
+                f"\nRemediation: Permission denied. Check file/directory permissions for {target}."
+            )
             return AdapterResult(success=False, error=error)
         except FileNotFoundError as e:
             error = str(e)

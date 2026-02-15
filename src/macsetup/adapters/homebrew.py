@@ -44,7 +44,9 @@ class HomebrewAdapter(Adapter):
             if "already tapped" in error.lower():
                 error += f"\nRemediation: Tap {tap} is already installed, no action needed."
             elif "invalid tap" in error.lower() or "not found" in error.lower():
-                error += "\nRemediation: Verify the tap name is correct. Format should be 'user/repo'."
+                error += (
+                    "\nRemediation: Verify the tap name is correct. Format should be 'user/repo'."
+                )
             else:
                 error += f"\nRemediation: Run 'brew tap {tap}' manually to see detailed error."
             return AdapterResult(success=False, error=error)
@@ -63,7 +65,9 @@ class HomebrewAdapter(Adapter):
             elif "permission denied" in error.lower():
                 error += "\nRemediation: Check Homebrew directory permissions. Run 'brew doctor' for diagnostics."
             else:
-                error += f"\nRemediation: Run 'brew install {formula}' manually to see detailed error."
+                error += (
+                    f"\nRemediation: Run 'brew install {formula}' manually to see detailed error."
+                )
             return AdapterResult(success=False, error=error)
 
     def install_cask(self, cask: str) -> AdapterResult:
@@ -80,7 +84,9 @@ class HomebrewAdapter(Adapter):
             elif "permission denied" in error.lower():
                 error += "\nRemediation: Cask installation may require admin privileges. Check system permissions."
             elif "sha256 mismatch" in error.lower():
-                error += "\nRemediation: Download may be corrupted. Run 'brew cleanup' and try again."
+                error += (
+                    "\nRemediation: Download may be corrupted. Run 'brew cleanup' and try again."
+                )
             else:
                 error += f"\nRemediation: Run 'brew install --cask {cask}' manually to see detailed error."
             return AdapterResult(success=False, error=error)
