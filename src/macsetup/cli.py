@@ -71,6 +71,11 @@ def cmd_capture(args: argparse.Namespace) -> int:
     if args.preferences:
         preference_domains = [p.strip() for p in args.preferences.split(",") if p.strip()]
 
+    # Parse exclude-dotfiles list
+    exclude_dotfiles = []
+    if args.exclude_dotfiles:
+        exclude_dotfiles = [d.strip() for d in args.exclude_dotfiles.split(",") if d.strip()]
+
     # Progress callback
     def progress(message: str, current: int, total: int):
         if not args.quiet and not args.json:
@@ -84,6 +89,8 @@ def cmd_capture(args: argparse.Namespace) -> int:
         skip_apps=args.skip_apps,
         skip_dotfiles=args.skip_dotfiles,
         skip_preferences=args.skip_preferences,
+        exclude_dotfiles=exclude_dotfiles,
+        include_sensitive=args.include_sensitive,
         progress_callback=progress,
     )
 
@@ -605,6 +612,16 @@ def create_parser() -> argparse.ArgumentParser:
         "--skip-apps",
         action="store_true",
         help="Skip application capture",
+    )
+    capture_parser.add_argument(
+        "--exclude-dotfiles",
+        metavar="PATHS",
+        help="Dotfile paths to exclude from auto-discovery (comma-separated)",
+    )
+    capture_parser.add_argument(
+        "--include-sensitive",
+        action="store_true",
+        help="Include sensitive dotfiles in auto-discovery",
     )
     capture_parser.add_argument(
         "--skip-dotfiles",

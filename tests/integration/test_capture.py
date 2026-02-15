@@ -10,6 +10,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
+from macsetup.adapters.dotfiles import DiscoveryResult
 from macsetup.cli import main
 
 
@@ -19,6 +20,19 @@ def capture_dir(tmp_path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
     return config_dir
+
+
+@pytest.fixture(autouse=True)
+def _mock_dotfiles():
+    """Prevent dotfile discovery from scanning the real home directory."""
+    with (
+        patch(
+            "macsetup.adapters.dotfiles.DotfilesAdapter.discover_dotfiles",
+            return_value=DiscoveryResult(),
+        ),
+        patch("macsetup.adapters.dotfiles.DotfilesAdapter.copy_to_config"),
+    ):
+        yield
 
 
 class TestCaptureCommandIntegration:

@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+from macsetup.adapters.dotfiles import DiscoveryResult
 from macsetup.cli import main
 
 
@@ -44,12 +45,19 @@ class TestSyncCommandIntegration:
         captured = capsys.readouterr()
         assert "not running" in captured.out
 
+    @patch("macsetup.adapters.dotfiles.DotfilesAdapter.copy_to_config")
+    @patch(
+        "macsetup.adapters.dotfiles.DotfilesAdapter.discover_dotfiles",
+        return_value=DiscoveryResult(),
+    )
     @patch("macsetup.adapters.homebrew.HomebrewAdapter.is_available")
     @patch("macsetup.adapters.mas.MasAdapter.is_available")
     def test_sync_now_runs_capture(
         self,
         mock_mas_available,
         mock_brew_available,
+        _mock_discover,
+        _mock_copy,
         sync_dir,
         capsys,
     ):
@@ -67,12 +75,19 @@ class TestSyncCommandIntegration:
         config_path = sync_dir / "config.yaml"
         assert config_path.exists()
 
+    @patch("macsetup.adapters.dotfiles.DotfilesAdapter.copy_to_config")
+    @patch(
+        "macsetup.adapters.dotfiles.DotfilesAdapter.discover_dotfiles",
+        return_value=DiscoveryResult(),
+    )
     @patch("macsetup.adapters.homebrew.HomebrewAdapter.is_available")
     @patch("macsetup.adapters.mas.MasAdapter.is_available")
     def test_sync_now_json_output(
         self,
         mock_mas_available,
         mock_brew_available,
+        _mock_discover,
+        _mock_copy,
         sync_dir,
         capsys,
     ):
