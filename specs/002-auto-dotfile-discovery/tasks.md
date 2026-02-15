@@ -139,6 +139,7 @@
 - [x] T023 Run `uv run ruff check .` and `uv run ruff format --check .` to verify linting and formatting pass with zero warnings
 - [x] T024 Verify `macsetup capture --help` documents `--exclude-dotfiles` and `--include-sensitive` flags
 - [x] T025 Run quickstart.md validation: manually verify each command example in specs/002-auto-dotfile-discovery/quickstart.md produces expected behavior
+- [x] T026 Verify SC-003 performance: confirm auto-discovery of ~35 registry entries completes within 500ms by timing `discover_dotfiles()` against a real home directory (the implementation performs ~35 `stat()` calls which is well under the threshold)
 
 ---
 
@@ -210,15 +211,16 @@ Task: "Wire flags through CaptureService in src/macsetup/services/capture.py"
 2. Complete Phase 2: Foundational (registry data model)
 3. Complete Phase 3: User Story 1 (core auto-discovery)
 4. **STOP and VALIDATE**: Test US1 independently — `macsetup capture` discovers dotfiles with no flags
-5. Create PR for Phase 1+2+3 (MVP)
 
-### Incremental Delivery
+### Incremental Delivery (One PR Per Phase)
 
-1. Phase 1 + Phase 2 → Foundation ready (PR 1: "Phase 1: Setup and foundational registry for auto-dotfile-discovery")
-2. Phase 3 (US1) → Core discovery works (PR 2: "Phase 2: Core auto-discovery during capture")
-3. Phase 4 (US2) → Merge with explicit dotfiles (PR 3: "Phase 3: Merge auto-discovered with explicit dotfiles")
-4. Phase 5 + Phase 6 (US3 + US4) → Exclusion, sensitive, progress (PR 4: "Phase 4: Exclusion, sensitive opt-in, and progress reporting")
-5. Phase 7 → Polish (included in final PR)
+1. Phase 1 → Setup verification (PR 1: "Phase 1: Verify existing tests pass")
+2. Phase 2 → Foundation ready (PR 2: "Phase 2: Foundational dotfile registry data model")
+3. Phase 3 (US1) → Core discovery works (PR 3: "Phase 3: Automatic dotfile detection during capture")
+4. Phase 4 (US2) → Merge with explicit dotfiles (PR 4: "Phase 4: Combine auto-discovery with explicit dotfiles")
+5. Phase 5 (US3) → Progress reporting (PR 5: "Phase 5: Discovery progress reporting")
+6. Phase 6 (US4) → Exclusion and sensitive opt-in (PR 6: "Phase 6: Exclude dotfiles and sensitive opt-in")
+7. Phase 7 → Polish and validation (PR 7: "Phase 7: Polish and cross-cutting validation")
 
 ---
 

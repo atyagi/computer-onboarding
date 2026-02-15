@@ -30,7 +30,7 @@ Add automatic discovery of well-known dotfiles during `macsetup capture`, bringi
 | III. Unix Philosophy | PASS | Discovery integrates into existing `capture` command; JSON output supported; proper exit codes maintained |
 | IV. Error Handling Excellence | PASS | Warnings for unreadable/oversized files with remediation suggestions; graceful skip-and-continue |
 | V. Documentation Required | PASS | `--help` will document new flags (`--exclude-dotfiles`, `--include-sensitive`); `--dotfiles` help text already says "Additional" |
-| VI. Phased Pull Requests | PASS | Implementation will proceed in phases: Setup/Foundation → P1 (core discovery) → P2 (merge) → P3 (exclusion/sensitive) |
+| VI. Phased Pull Requests | PASS | One PR per phase: Phase 1 (setup) → Phase 2 (foundation) → Phase 3 (US1 discovery) → Phase 4 (US2 merge) → Phase 5 (US3 progress) → Phase 6 (US4 exclusion/sensitive) → Phase 7 (polish) |
 | Security Standards | PASS | Sensitive dotfiles excluded by default; path validation already exists; no new external commands |
 | Performance Standards | PASS | ~30-40 `stat()` calls is well under 500ms; progress reporting maintained |
 

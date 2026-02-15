@@ -10,8 +10,8 @@ Represents a single well-known dotfile in the curated registry.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | path | str | Yes | Path relative to `$HOME` (e.g., `.zshrc`, `.config/starship.toml`) |
-| category | str | Yes | Grouping label (e.g., `shell`, `git`, `editor`, `terminal`, `dev-tools`, `sensitive`) |
-| sensitive | bool | No (default: False) | If True, excluded from auto-discovery unless `--include-sensitive` is passed |
+| category | str | Yes | Descriptive grouping label (e.g., `shell`, `git`, `editor`, `terminal`, `dev-tools`, `ssh`, `cloud`, `security`, `secrets`) |
+| sensitive | bool | No (default: False) | If True, excluded from auto-discovery unless `--include-sensitive` is passed. This field controls opt-in behavior — the `category` value is for organization only. |
 
 **Validation rules**:
 - `path` must not start with `/` or contain `..` (consistent with existing Dotfile schema)
@@ -44,7 +44,7 @@ DotfilesAdapter.discover_dotfiles(home, excludes, include_sensitive)
     │  - Skips directories, unreadable, oversized files
     │
     ▼
-List[Dotfile]  (discovered)
+DiscoveryResult  (discovered: list[Dotfile], warnings: list[str])
     │
     ▼
 CaptureService._capture_dotfiles()
