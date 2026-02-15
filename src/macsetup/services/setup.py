@@ -80,18 +80,24 @@ class SetupService:
         self._state: SetupState | None = None
         self._interrupted = False
 
-        # Setup signal handling
-        self._setup_signal_handlers()
+    def _install_signal_handlers(self):
+        """Install signal handlers for graceful interruption.
 
-    def _setup_signal_handlers(self):
-        """Setup signal handlers for graceful interruption."""
+        Returns original handlers so they can be restored after run().
+        """
 
         def handle_sigint(signum, frame):
             self._interrupted = True
             print("\nInterrupted. Saving state...")
 
-        signal.signal(signal.SIGINT, handle_sigint)
-        signal.signal(signal.SIGTERM, handle_sigint)
+        old_sigint = signal.signal(signal.SIGINT, handle_sigint)
+        old_sigterm = signal.signal(signal.SIGTERM, handle_sigint)
+        return old_sigint, old_sigterm
+
+    def _restore_signal_handlers(self, old_sigint, old_sigterm):
+        """Restore original signal handlers."""
+        signal.signal(signal.SIGINT, old_sigint)
+        signal.signal(signal.SIGTERM, old_sigterm)
 
     def _get_profile(self) -> Profile:
         """Get the active profile."""
@@ -266,6 +272,7 @@ class SetupService:
 
         result = SetupResult(success=True, manual_apps=[])
 
+        old_sigint, old_sigterm = self._install_signal_handlers()
         try:
             # Bootstrap Homebrew if needed and apps are requested
             if profile.applications:
@@ -316,6 +323,8 @@ class SetupService:
             self._mark_failed("setup", "general", str(e))
             result.failed_items = list(self._state.failed_items)
             self._save_state(self._state)
+        finally:
+            self._restore_signal_handlers(old_sigint, old_sigterm)
 
         return result
 
