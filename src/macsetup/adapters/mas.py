@@ -42,7 +42,9 @@ class MasAdapter(Adapter):
             elif "purchased" in error.lower():
                 error += f"\nRemediation: App {app_id} must be purchased or downloaded from App Store first."
             else:
-                error += f"\nRemediation: Run 'mas install {app_id}' manually to see detailed error."
+                error += (
+                    f"\nRemediation: Run 'mas install {app_id}' manually to see detailed error."
+                )
             return AdapterResult(success=False, error=error)
 
     def is_installed(self, app_id: int) -> bool:
