@@ -2,7 +2,7 @@
 
 **Feature Branch**: `002-auto-dotfile-discovery`
 **Created**: 2026-02-12
-**Status**: Draft
+**Status**: Implemented
 **Input**: User description: "I'd like to have this feature automatically find common dotfiles and keep track of them the same way as the homebrew and mac app store apps"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -40,7 +40,7 @@ A user runs `macsetup capture --dotfiles ".my-custom-rc,.work/settings"` and the
 
 ### User Story 3 - Reviewing Discovered Dotfiles Before Capture (Priority: P3)
 
-A user wants to see which dotfiles would be captured before committing. They run `macsetup capture --dry-run` (or use the preview mechanism) and the system lists all auto-discovered dotfiles alongside any explicit ones, allowing the user to review and then proceed or adjust.
+A user wants to see which dotfiles would be captured before committing. They run `macsetup capture` in verbose mode and the system lists all auto-discovered dotfiles alongside any explicit ones, allowing the user to review. They can then re-run with `--exclude-dotfiles` or `--skip-dotfiles` to adjust.
 
 **Why this priority**: Transparency builds trust. Users who are new to the tool or cautious about what gets captured need visibility into what the auto-discovery found before it copies files.
 
@@ -94,10 +94,10 @@ A user wants automatic discovery but needs to exclude certain sensitive or irrel
 - **FR-007**: The system MUST skip files that exceed a reasonable size threshold (default: 1 MB) to avoid capturing history files or binary data, with a warning message.
 - **FR-008**: Users MUST be able to exclude specific dotfile paths from auto-discovery via a CLI flag (`--exclude-dotfiles`).
 - **FR-009**: The `--skip-dotfiles` flag MUST continue to disable all dotfile capture, including auto-discovery.
-- **FR-012**: Users MUST be able to include all sensitive dotfiles in auto-discovery via a single CLI flag (`--include-sensitive`). When this flag is set, sensitive registry entries are discovered alongside default entries.
-- **FR-013**: Sensitive dotfile paths in the registry MUST include at minimum: `.ssh/config`, `.aws/credentials`, `.aws/config`, `.gnupg/` files, `.netrc`, and `.env`.
 - **FR-010**: The system MUST report discovered dotfiles during capture progress (consistent with existing Homebrew/MAS progress reporting).
 - **FR-011**: The known dotfile registry MUST include at minimum: shell configs (`.bashrc`, `.bash_profile`, `.zshrc`, `.zshenv`, `.zprofile`), git (`.gitconfig`, `.gitignore_global`), editor configs (`.vimrc`, `.config/nvim/init.vim`, `.config/nvim/init.lua`), terminal (`.config/starship.toml`, `.tmux.conf`), and tool configs (`.config/gh/config.yml`, `.npmrc`, `.gemrc`).
+- **FR-012**: Users MUST be able to include all sensitive dotfiles in auto-discovery via a single CLI flag (`--include-sensitive`). When this flag is set, sensitive registry entries are discovered alongside default entries.
+- **FR-013**: Sensitive dotfile paths in the registry MUST include at minimum: `.ssh/config`, `.aws/credentials`, `.aws/config`, `.gnupg/` files, `.netrc`, and `.env`.
 
 ### Key Entities
 
