@@ -66,7 +66,6 @@ Not a persisted entity — a runtime detection result used during `init` and for
 |-----------|------|-------------|
 | available | bool | iCloud Drive directory exists |
 | path | Path | Resolved iCloud Drive root path |
-| optimize_storage | bool or None | Whether "Optimize Mac Storage" is on (files may be evicted) |
 
 ## Resolution Order
 

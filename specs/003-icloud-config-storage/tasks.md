@@ -43,7 +43,7 @@
 
 - [ ] T007 [P] Implement get_icloud_drive_path() and is_icloud_available() in src/macsetup/adapters/icloud.py using Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs" with is_dir() check per research.md
 - [ ] T008 Implement pointer file reading in get_config_dir() in src/macsetup/cli.py: read ~/.config/macsetup/config-dir, validate path is absolute and exists, return path if valid; maintain precedence order: CLI flag > env var > pointer > default per data-model.md resolution order
-- [ ] T009 Implement ConfigDirError for unreachable pointer path in src/macsetup/cli.py with error message and remediation suggestions per contracts/cli-contract.md error output format
+- [ ] T009 Implement ConfigDirError for unreachable pointer path in src/macsetup/cli.py with error message and remediation suggestions per contracts/cli-contract.md error output format. Wire a ConfigDirError catch in main() so that when get_config_dir() raises, the error is formatted per the contract's "pointer to unreachable path" output and exits with code 1. Note: the init command must be exempted from this check (see T016).
 
 **Checkpoint**: Pointer file resolution works, iCloud detection works. All existing commands still function normally (no pointer file = no behavior change).
 
@@ -65,10 +65,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Implement pointer file write and delete utilities in src/macsetup/adapters/icloud.py: write_pointer_file(pointer_path, target_dir) writes absolute path to file, delete_pointer_file(pointer_path) removes pointer file, read_pointer_file(pointer_path) reads and validates pointer
+- [ ] T013 [US1] Implement pointer file write and delete utilities in src/macsetup/cli.py (co-located with pointer file reading in get_config_dir): write_pointer_file(pointer_path, target_dir) writes absolute path to file, delete_pointer_file(pointer_path) removes pointer file. These are NOT iCloud-specific — the pointer mechanism is general config directory indirection — so they belong alongside the read logic, not in the iCloud adapter.
 - [ ] T014 [US1] Implement InitService.init_icloud() for fresh case in src/macsetup/services/init.py: check iCloud available via ICloudAdapter, create iCloud macsetup dir, write pointer file, return result with storage type and path
 - [ ] T015 [US1] Implement InitService.status() in src/macsetup/services/init.py: check if pointer file exists, read current storage location, check iCloud availability, return status dict per contracts/cli-contract.md JSON format
-- [ ] T016 [US1] Implement cmd_init() handler in src/macsetup/cli.py: dispatch to InitService based on flags, format human/JSON output per contracts/cli-contract.md, set exit codes (0=success, 1=iCloud unavailable, 2=conflict)
+- [ ] T016 [US1] Implement cmd_init() handler in src/macsetup/cli.py: dispatch to InitService based on flags, format human/JSON output per contracts/cli-contract.md, set exit codes (0=success, 1=iCloud unavailable, 2=conflict). IMPORTANT: Update main() to bypass config dir validation (ConfigDirError) when the command is "init" — init must work before a config dir or pointer file exists, and init --status should not fail if the pointer references a missing path. The init command handles its own path resolution via InitService.
 - [ ] T017 [US1] Add init subcommand parser to create_parser() in src/macsetup/cli.py: --icloud flag, --local flag, --status flag, --force flag, --quiet/--json global flags, --help text per contracts/cli-contract.md usage section
 
 **Checkpoint**: `macsetup init --icloud` works on a fresh machine (no existing config). `macsetup init --status` reports current storage. All existing commands transparently use iCloud when pointer is set.
@@ -166,7 +166,7 @@
 - **US1 (Phase 3)**: Depends on Phase 2 — MVP delivery point
 - **US2 (Phase 4)**: Depends on Phase 3 (extends init_icloud with migration)
 - **US3 (Phase 5)**: Depends on Phase 3 (extends init_icloud with detection)
-- **US4 (Phase 6)**: Depends on Phase 2 only (init_local is independent of init_icloud details)
+- **US4 (Phase 6)**: Depends on Phase 2 + T013 from Phase 3 (init_local needs pointer file write/delete utilities)
 - **Polish (Phase 7)**: Depends on Phases 3-6 being complete
 
 ### User Story Dependencies
@@ -174,7 +174,7 @@
 - **US1 (P1)**: Foundational → US1 (core init flow, MVP)
 - **US2 (P2)**: US1 → US2 (migration extends fresh init)
 - **US3 (P2)**: US1 → US3 (existing config detection extends fresh init)
-- **US4 (P3)**: Foundational → US4 (revert is independent of init_icloud details, only needs pointer read/write)
+- **US4 (P3)**: Foundational + T013 → US4 (revert needs pointer write/delete utilities from T013)
 
 ### Within Each User Story
 
@@ -192,7 +192,7 @@
 - Phase 5: Test tasks T023-T024 can run in parallel
 - Phase 6: Test tasks T027-T028 can run in parallel
 - Phase 7: Tasks T031-T034 can all run in parallel (different methods in same file, but independent)
-- **US4 can run in parallel with US2/US3** since it only depends on Foundational, not US1
+- **US4 can run in parallel with US2/US3** after T013 (pointer utilities) from Phase 3 is complete — US4 depends on Foundational + T013, not the full US1
 
 ---
 

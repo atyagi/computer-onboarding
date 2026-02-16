@@ -34,7 +34,7 @@ A user has already captured their configuration to the default local directory (
 **Acceptance Scenarios**:
 
 1. **Given** a configuration exists at `~/.config/macsetup`, **When** the user runs `macsetup init --icloud`, **Then** the existing configuration is moved to the iCloud directory and a local pointer is created.
-2. **Given** a configuration exists at `~/.config/macsetup` and a configuration already exists in the iCloud directory, **When** the user runs `macsetup init --icloud`, **Then** the command warns about the conflict and asks the user to choose which config to keep (or use `--force` to overwrite).
+2. **Given** a configuration exists at `~/.config/macsetup` and a configuration already exists in the iCloud directory, **When** the user runs `macsetup init --icloud`, **Then** the command warns about the conflict and suggests resolution options: use `--force` to overwrite iCloud with local, or manually remove the local config and re-run to keep the iCloud version. **Known limitation**: `--force` only resolves in one direction (local overwrites iCloud). To keep the iCloud version, the user must manually delete the local config first. A `--keep-icloud` flag may be added in a future iteration if user feedback indicates friction.
 3. **Given** the migration completes successfully, **When** the user runs `macsetup preview`, **Then** it reads from the iCloud location and shows the correct configuration.
 
 ---
