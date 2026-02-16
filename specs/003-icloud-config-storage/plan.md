@@ -31,6 +31,7 @@ Enable macsetup to store its configuration directory in iCloud Drive for automat
 | IV. Error Handling Excellence | PASS | iCloud unavailable, conflict, eviction — all produce errors with remediation steps |
 | V. Documentation Required | PASS | `init --help` will cover all options; existing `--help` unchanged |
 | VI. Phased Pull Requests | PASS | Implementation will proceed through discrete phases with independent PRs |
+| VII. Project Boundary | PASS | All file operations confined to repo paths and user config dirs (~/.config/macsetup, ~/Library/Mobile Documents) |
 
 **Post-Phase 1 re-check**: PASS — Design adds 2 new files (adapter + service) following existing patterns. No abstractions beyond what's needed. Pointer file mechanism is the simplest approach that satisfies requirements.
 
@@ -74,7 +75,7 @@ tests/
 └── (integration/, contract/, bats/ unchanged)
 ```
 
-**Structure Decision**: Follows existing single-project layout. New adapter (`icloud.py`) and service (`init.py`) follow the established pattern of one adapter/service per domain concern. No structural changes to the project.
+**Structure Decision**: Follows existing single-project layout. New adapter (`icloud.py`, standalone class — not extending Adapter base since iCloud is a filesystem path, not a CLI tool) and service (`init.py`) follow the established pattern of one module per domain concern. No structural changes to the project.
 
 ## Complexity Tracking
 

@@ -149,3 +149,20 @@ Result: ERROR — conflict detected. User must choose:
   - Use --force to overwrite iCloud config with local
   - Manually resolve (delete one config)
 ```
+
+### Conflict resolution: --force (overwrite iCloud with local)
+
+```
+Before:
+  ~/.config/macsetup/config.yaml        EXISTS
+  ~/.config/macsetup/dotfiles/          EXISTS
+  ~/.config/macsetup/config-dir         ABSENT
+  iCloud Drive macsetup/config.yaml     EXISTS
+
+After (macsetup init --icloud --force):
+  ~/.config/macsetup/config.yaml        DELETED (moved)
+  ~/.config/macsetup/dotfiles/          DELETED (moved)
+  ~/.config/macsetup/config-dir         CREATED (points to iCloud)
+  iCloud Drive macsetup/config.yaml     OVERWRITTEN (from local)
+  iCloud Drive macsetup/dotfiles/       OVERWRITTEN (from local)
+```

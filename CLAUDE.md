@@ -8,7 +8,7 @@ macOS Configuration Sync CLI - A tool to capture, store, and restore macOS machi
 
 ## Active Technologies
 - Python 3.14 with bash wrapper scripts + PyYAML, jsonschema, argparse (stdlib) — no new dependencies needed (002-auto-dotfile-discovery)
-- Python 3.14 with bash wrapper scripts + PyYAML, jsonschema, argparse (stdlib) — adds iCloud Drive path resolution via pathlib, shutil (stdlib); no new dependencies needed (003-icloud-config-storage)
+- iCloud Drive path resolution via pathlib, shutil (stdlib); pointer file mechanism for config directory indirection; new `init` subcommand — no new dependencies needed (003-icloud-config-storage)
 
 - **Language**: Python 3.14 with bash wrapper scripts
 - **Package Manager**: uv (Python version + dependency management)
@@ -71,7 +71,8 @@ uv add --dev <package>
 3. **Unix Philosophy**: One command does one thing, support JSON output, proper exit codes
 4. **Error Handling Excellence**: Helpful errors with remediation suggestions
 5. **Documentation Required**: --help for all commands
-6. **Project Boundary**: NEVER edit files outside of this direct repository (i.e. "../")
+6. **Phased Pull Requests**: Each tasks.md phase = separate PR, reviewed and merged in order
+7. **Project Boundary**: NEVER edit files outside of this direct repository (i.e. "../")
 
 ## Performance Constraints
 
@@ -84,5 +85,5 @@ uv add --dev <package>
 <!-- MANUAL ADDITIONS END -->
 
 ## Recent Changes
-- 003-icloud-config-storage: Added Python 3.14 with bash wrapper scripts + PyYAML, jsonschema, argparse (stdlib) — no new dependencies needed
+- 003-icloud-config-storage: Added iCloud Drive path resolution via pathlib, shutil (stdlib); pointer file mechanism for config directory indirection; new `init` subcommand — no new dependencies needed
 - 002-auto-dotfile-discovery: Added Python 3.14 with bash wrapper scripts + PyYAML, jsonschema, argparse (stdlib) — no new dependencies needed

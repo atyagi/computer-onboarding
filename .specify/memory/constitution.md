@@ -1,10 +1,10 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.0 → 1.1.0 (minor version - new principle added)
+Version change: 1.1.0 → 1.2.0 (minor version - new principle added)
 Modified principles: N/A
 Added sections:
-  - Principle VI: Phased Pull Requests (new workflow principle)
+  - Principle VII: Project Boundary (new safety principle, NON-NEGOTIABLE)
 Removed sections: N/A
 Templates requiring updates:
   - .specify/templates/plan-template.md: ✅ compatible (no changes needed)
@@ -98,6 +98,19 @@ Feature implementation MUST proceed through discrete phases with independent PRs
 early feedback, and create logical rollback points. Large monolithic PRs are
 harder to review, riskier to merge, and provide no incremental value delivery.
 
+### VII. Project Boundary (NON-NEGOTIABLE)
+
+All file operations MUST remain within the project repository:
+
+- NEVER edit files outside of this direct repository (i.e., "../")
+- All generated output MUST target project-relative paths
+- External references MUST be read-only (environment variables, system paths)
+- Build artifacts and temp files MUST use project-scoped directories
+
+**Rationale**: Unbounded file operations risk modifying unrelated projects,
+user home directories, or system files. Strict project boundaries prevent
+accidental side effects and ensure reproducible builds.
+
 ## Additional Constraints
 
 ### Security Standards
@@ -157,4 +170,4 @@ computer-onboarding project. All development work MUST comply.
 - Violations MUST be documented and justified in Complexity Tracking
 - Constitution supersedes informal practices or preferences
 
-**Version**: 1.1.0 | **Ratified**: 2026-01-31 | **Last Amended**: 2026-02-01
+**Version**: 1.2.0 | **Ratified**: 2026-01-31 | **Last Amended**: 2026-02-16
