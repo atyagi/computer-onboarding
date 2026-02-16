@@ -82,7 +82,7 @@ A user who previously set up iCloud storage wants to switch back to local-only s
 
 ### Functional Requirements
 
-- **FR-001**: System MUST support storing the configuration directory inside iCloud Drive at a well-known path (e.g., `~/Library/Mobile Documents/com~apple~CloudDocs/macsetup/`).
+- **FR-001**: System MUST support storing the configuration directory inside iCloud Drive, resolving the iCloud Drive path dynamically using the standard macOS location (`~/Library/Mobile Documents/com~apple~CloudDocs/macsetup/`) rather than hardcoding it.
 - **FR-002**: System MUST provide a command (`macsetup init --icloud`) that initializes the iCloud config directory and creates a local pointer file so that subsequent commands use the iCloud location automatically.
 - **FR-003**: System MUST store the active config directory location in a local pointer file at `~/.config/macsetup/config-dir` (a plain text file containing the path). This file is always read first to resolve the actual config directory.
 - **FR-004**: System MUST detect whether iCloud Drive is available before attempting to use it, and report a clear error with remediation steps if it is not.
@@ -92,7 +92,7 @@ A user who previously set up iCloud storage wants to switch back to local-only s
 - **FR-008**: System MUST detect iCloud file eviction (cloud-only files not yet downloaded) and provide a meaningful warning rather than reading empty or placeholder data.
 - **FR-009**: All existing commands (capture, setup, preview, sync, validate) MUST work transparently with the iCloud-backed config directory — no command changes required beyond `init`.
 - **FR-010**: The `--config-dir` CLI flag and `MACSETUP_CONFIG_DIR` environment variable MUST continue to work and take precedence over the iCloud pointer when specified.
-- **FR-011**: System MUST resolve the iCloud Drive path dynamically using the standard macOS iCloud Drive location rather than hardcoding a path.
+- **FR-011**: (Merged into FR-001) System MUST resolve the iCloud Drive path dynamically using the standard macOS iCloud Drive location rather than hardcoding a path. See FR-001.
 - **FR-012**: When the config directory pointer references an iCloud path that is unavailable (unmounted, user signed out, path missing), commands MUST fail with a clear error message and remediation suggestions (e.g., use `--config-dir` to override or `macsetup init --local` to revert). The system MUST NOT silently fall back to the default local directory.
 
 ### Key Entities

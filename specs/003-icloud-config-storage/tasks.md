@@ -19,7 +19,7 @@
 
 **Purpose**: Create new module files and establish test scaffolding
 
-- [ ] T001 [P] Create iCloud adapter module at src/macsetup/adapters/icloud.py with ICloudAdapter class skeleton extending Adapter base class (is_available, get_tool_name methods)
+- [ ] T001 [P] Create iCloud adapter module at src/macsetup/adapters/icloud.py with ICloudAdapter class skeleton as a standalone class (NOT extending Adapter — iCloud is a filesystem path, not a CLI tool). Methods: is_icloud_available() -> bool, get_icloud_drive_path() -> Path.
 - [ ] T002 [P] Create init service module at src/macsetup/services/init.py with InitService class skeleton
 - [ ] T003 [P] Create test file at tests/unit/test_icloud.py with test class scaffolding for ICloudAdapter
 - [ ] T004 [P] Create test file at tests/unit/test_init.py with test class scaffolding for InitService
@@ -36,14 +36,14 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T005 [P] Write tests for iCloud Drive path resolution and availability detection in tests/unit/test_icloud.py: test get_icloud_drive_path() returns correct Path, test is_icloud_available() returns True when dir exists, test is_icloud_available() returns False when dir absent
+- [ ] T005 [P] Write tests for iCloud Drive path resolution and availability detection in tests/unit/test_icloud.py: test get_icloud_drive_path() returns correct Path, test is_icloud_available() returns True when dir exists, test is_icloud_available() returns False when dir absent, test is_icloud_available() returns False when path exists but is a file (not directory), test is_icloud_available() returns False when path is a symlink to nonexistent target
 - [ ] T006 [P] Write tests for pointer file reading in tests/unit/test_cli.py: test get_config_dir() reads pointer file when present, test get_config_dir() returns default when pointer absent, test get_config_dir() CLI flag overrides pointer, test get_config_dir() env var overrides pointer, test get_config_dir() errors when pointer references nonexistent path
 
 ### Implementation for Foundational
 
 - [ ] T007 [P] Implement get_icloud_drive_path() and is_icloud_available() in src/macsetup/adapters/icloud.py using Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs" with is_dir() check per research.md
 - [ ] T008 Implement pointer file reading in get_config_dir() in src/macsetup/cli.py: read ~/.config/macsetup/config-dir, validate path is absolute and exists, return path if valid; maintain precedence order: CLI flag > env var > pointer > default per data-model.md resolution order
-- [ ] T009 Implement ConfigDirError for unreachable pointer path in src/macsetup/cli.py with error message and remediation suggestions per contracts/cli-contract.md error output format. Wire a ConfigDirError catch in main() so that when get_config_dir() raises, the error is formatted per the contract's "pointer to unreachable path" output and exits with code 1. Note: the init command must be exempted from this check (see T016).
+- [ ] T009 Implement ConfigDirError exception class in src/macsetup/cli.py with error message and remediation suggestions per contracts/cli-contract.md error output format. Raise ConfigDirError from get_config_dir() when the pointer references an unreachable path. Wire a ConfigDirError catch in main() that formats the error per the contract and exits with code 1. Guard the catch so that when parsed.command == "init", ConfigDirError is NOT raised — init handles its own path resolution (see T016). All main() changes for ConfigDirError and init exemption happen in THIS task.
 
 **Checkpoint**: Pointer file resolution works, iCloud detection works. All existing commands still function normally (no pointer file = no behavior change).
 
@@ -68,7 +68,7 @@
 - [ ] T013 [US1] Implement pointer file write and delete utilities in src/macsetup/cli.py (co-located with pointer file reading in get_config_dir): write_pointer_file(pointer_path, target_dir) writes absolute path to file, delete_pointer_file(pointer_path) removes pointer file. These are NOT iCloud-specific — the pointer mechanism is general config directory indirection — so they belong alongside the read logic, not in the iCloud adapter.
 - [ ] T014 [US1] Implement InitService.init_icloud() for fresh case in src/macsetup/services/init.py: check iCloud available via ICloudAdapter, create iCloud macsetup dir, write pointer file, return result with storage type and path
 - [ ] T015 [US1] Implement InitService.status() in src/macsetup/services/init.py: check if pointer file exists, read current storage location, check iCloud availability, return status dict per contracts/cli-contract.md JSON format
-- [ ] T016 [US1] Implement cmd_init() handler in src/macsetup/cli.py: dispatch to InitService based on flags, format human/JSON output per contracts/cli-contract.md, set exit codes (0=success, 1=iCloud unavailable, 2=conflict). IMPORTANT: Update main() to bypass config dir validation (ConfigDirError) when the command is "init" — init must work before a config dir or pointer file exists, and init --status should not fail if the pointer references a missing path. The init command handles its own path resolution via InitService.
+- [ ] T016 [US1] Implement cmd_init() handler in src/macsetup/cli.py: dispatch to InitService based on flags, format human/JSON output per contracts/cli-contract.md, set exit codes (0=success, 1=iCloud unavailable, 2=conflict). Note: main() already exempts the init command from ConfigDirError (wired in T009).
 - [ ] T017 [US1] Add init subcommand parser to create_parser() in src/macsetup/cli.py: --icloud flag, --local flag, --status flag, --force flag, --quiet/--json global flags, --help text per contracts/cli-contract.md usage section
 
 **Checkpoint**: `macsetup init --icloud` works on a fresh machine (no existing config). `macsetup init --status` reports current storage. All existing commands transparently use iCloud when pointer is set.
@@ -93,6 +93,7 @@
 - [ ] T020 [US2] Implement migration logic in InitService.init_icloud() in src/macsetup/services/init.py: detect existing local config (config.yaml in default dir), copy config.yaml and dotfiles/ to iCloud dir using shutil, delete local originals after successful copy, write pointer file
 - [ ] T021 [US2] Implement conflict detection in InitService.init_icloud() in src/macsetup/services/init.py: check if iCloud macsetup/config.yaml already exists, check if local config.yaml exists, if both exist and no --force: return error with exit code 2, if --force: overwrite iCloud with local then delete local
 - [ ] T022 [US2] Update cmd_init() in src/macsetup/cli.py to handle migration and conflict output: display file-by-file progress during migration, display conflict error with remediation per contracts/cli-contract.md, set exit code 2 for conflict
+- [ ] T022a [US2] Handle write failures during migration in InitService.init_icloud(): catch OSError/shutil.Error from copy/mkdir operations, report "iCloud Drive may be full or read-only" with the specific path that failed, exit code 1. Covers spec edge case: "user's iCloud storage is full."
 
 **Checkpoint**: Existing users can migrate to iCloud with a single command. Conflicts are detected and reported clearly.
 
@@ -205,7 +206,7 @@ Task: "Write tests for InitService.status() in tests/unit/test_init.py"
 Task: "Write tests for cmd_init in tests/unit/test_cli.py"
 
 # After tests written, launch parallel adapter + service work:
-Task: "Implement pointer file write/delete in src/macsetup/adapters/icloud.py"
+Task: "Implement pointer file write/delete in src/macsetup/cli.py"
 # (then sequentially)
 Task: "Implement InitService.init_icloud() in src/macsetup/services/init.py"
 Task: "Implement cmd_init() in src/macsetup/cli.py"

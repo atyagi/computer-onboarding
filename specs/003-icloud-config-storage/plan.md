@@ -31,6 +31,7 @@ Enable macsetup to store its configuration directory in iCloud Drive for automat
 | IV. Error Handling Excellence | PASS | iCloud unavailable, conflict, eviction — all produce errors with remediation steps |
 | V. Documentation Required | PASS | `init --help` will cover all options; existing `--help` unchanged |
 | VI. Phased Pull Requests | PASS | Implementation will proceed through discrete phases with independent PRs |
+| VII. Project Boundary | PASS | All file operations confined to repo paths and user config dirs (~/.config/macsetup, ~/Library/Mobile Documents) |
 
 **Post-Phase 1 re-check**: PASS — Design adds 2 new files (adapter + service) following existing patterns. No abstractions beyond what's needed. Pointer file mechanism is the simplest approach that satisfies requirements.
 

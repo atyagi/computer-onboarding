@@ -26,12 +26,13 @@ Set up iCloud Drive as the config storage location.
 
 **Behavior matrix**:
 
-| Local config exists | iCloud config exists | Result |
-|---------------------|---------------------|--------|
-| No | No | Create empty iCloud dir, write pointer |
-| Yes | No | Move local to iCloud, write pointer |
-| No | Yes | Write pointer (use existing iCloud config) |
-| Yes | Yes | Error (conflict) unless `--force` |
+| Local config exists | iCloud config exists | --force | Result |
+|---------------------|---------------------|---------|--------|
+| No | No | N/A | Create empty iCloud dir, write pointer |
+| Yes | No | N/A | Move local to iCloud, write pointer |
+| No | Yes | N/A | Write pointer (use existing iCloud config) |
+| Yes | Yes | No | Error (conflict), exit code 2 |
+| Yes | Yes | Yes | Overwrite iCloud with local, delete local, write pointer |
 
 **Exit codes**:
 - `0`: Success
@@ -153,7 +154,7 @@ Note: Your iCloud copy was not deleted. To remove it:
 Show current storage configuration.
 
 **Exit codes**:
-- `0`: Always (informational)
+- `0`: Always (informational — even when iCloud is unavailable or pointer is broken). Scripts should check the JSON `icloud_available` and `storage` fields to detect degraded states.
 
 **Human output**:
 ```
