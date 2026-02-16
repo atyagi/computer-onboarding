@@ -8,7 +8,7 @@ macOS Configuration Sync CLI - A tool to capture, store, and restore macOS machi
 
 ## Active Technologies
 - Python 3.14 with bash wrapper scripts + PyYAML, jsonschema, argparse (stdlib) — no new dependencies needed (002-auto-dotfile-discovery)
-- Python 3.14 with bash wrapper scripts + PyYAML, jsonschema, argparse (stdlib) — adds iCloud Drive path resolution via pathlib, shutil (stdlib); no new dependencies needed (003-icloud-config-storage)
+- iCloud Drive path resolution via pathlib, shutil (stdlib); pointer file mechanism for config directory indirection; new `init` subcommand — no new dependencies needed (003-icloud-config-storage)
 
 - **Language**: Python 3.14 with bash wrapper scripts
 - **Package Manager**: uv (Python version + dependency management)

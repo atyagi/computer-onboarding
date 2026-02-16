@@ -156,6 +156,7 @@ Result: ERROR — conflict detected. User must choose:
 Before:
   ~/.config/macsetup/config.yaml        EXISTS
   ~/.config/macsetup/dotfiles/          EXISTS
+  ~/.config/macsetup/config-dir         ABSENT
   iCloud Drive macsetup/config.yaml     EXISTS
 
 After (macsetup init --icloud --force):

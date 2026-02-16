@@ -75,7 +75,7 @@ tests/
 └── (integration/, contract/, bats/ unchanged)
 ```
 
-**Structure Decision**: Follows existing single-project layout. New adapter (`icloud.py`) and service (`init.py`) follow the established pattern of one adapter/service per domain concern. No structural changes to the project.
+**Structure Decision**: Follows existing single-project layout. New adapter (`icloud.py`, standalone class — not extending Adapter base since iCloud is a filesystem path, not a CLI tool) and service (`init.py`) follow the established pattern of one module per domain concern. No structural changes to the project.
 
 ## Complexity Tracking
 

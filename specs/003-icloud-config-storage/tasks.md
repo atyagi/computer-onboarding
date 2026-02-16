@@ -87,6 +87,7 @@
 
 - [ ] T018 [P] [US2] Write tests for InitService.init_icloud() migration case in tests/unit/test_init.py: test moves config.yaml to iCloud dir, test moves dotfiles/ directory tree to iCloud dir, test deletes local files after copy, test preserves file contents during migration, test pointer file is written after move
 - [ ] T019 [P] [US2] Write tests for conflict detection in tests/unit/test_init.py: test errors when both local and iCloud config.yaml exist (no --force), test --force overwrites iCloud config with local, test error message includes both config paths and timestamps per contracts/cli-contract.md conflict output
+- [ ] T019a [P] [US2] Write tests for write failure handling in tests/unit/test_init.py: test init_icloud() reports error when shutil.copy raises OSError during migration, test error message includes specific path that failed, test error message suggests "iCloud Drive may be full or read-only", test exit code 1 on write failure
 
 ### Implementation for User Story 2
 
