@@ -45,8 +45,9 @@ class InitService:
         icloud_macsetup = icloud_drive / "macsetup"
 
         local_config = self.default_config_dir / "config.yaml"
+        local_dotfiles = self.default_config_dir / "dotfiles"
         icloud_config = icloud_macsetup / "config.yaml"
-        has_local = local_config.is_file()
+        has_local = local_config.is_file() or local_dotfiles.is_dir()
         has_icloud = icloud_config.is_file()
 
         # Conflict detection
@@ -59,13 +60,22 @@ class InitService:
                 "icloud_path": str(icloud_config),
             }
 
-        # Create iCloud macsetup directory
-        icloud_macsetup.mkdir(parents=True, exist_ok=True)
+        try:
+            # Create iCloud macsetup directory
+            icloud_macsetup.mkdir(parents=True, exist_ok=True)
+        except (OSError, shutil.Error) as e:
+            failed_path = getattr(e, "filename", str(icloud_macsetup))
+            return {
+                "success": False,
+                "error": "write_failure",
+                "message": "iCloud Drive may be full or read-only",
+                "path": str(failed_path),
+            }
 
         # Migration: move local config to iCloud
         if has_local:
             try:
-                files_moved = self._migrate_to_icloud(icloud_macsetup)
+                files_moved = self._copy_to_icloud(icloud_macsetup)
             except (OSError, shutil.Error) as e:
                 failed_path = getattr(e, "filename", str(self.default_config_dir))
                 return {
@@ -75,7 +85,34 @@ class InitService:
                     "path": str(failed_path),
                 }
 
-            write_pointer_file(self.pointer_path, icloud_macsetup)
+            try:
+                self._delete_local_originals()
+            except (OSError, shutil.Error) as e:
+                failed_path = getattr(e, "filename", str(self.default_config_dir))
+                return {
+                    "success": False,
+                    "error": "cleanup_failure",
+                    "message": (
+                        "Files were copied to iCloud but local cleanup failed. "
+                        "Your data is safe in iCloud. Remove local files manually."
+                    ),
+                    "path": str(failed_path),
+                    "config_dir": str(icloud_macsetup),
+                }
+
+            try:
+                write_pointer_file(self.pointer_path, icloud_macsetup)
+            except OSError:
+                return {
+                    "success": False,
+                    "error": "pointer_write_failure",
+                    "message": (
+                        "Files were migrated to iCloud but the pointer file could not be written. "
+                        "Re-run 'macsetup init --icloud' to retry."
+                    ),
+                    "config_dir": str(icloud_macsetup),
+                }
+
             return {
                 "success": True,
                 "storage": "icloud",
@@ -86,7 +123,14 @@ class InitService:
 
         # Existing iCloud config detected (US3 - new Mac scenario)
         if has_icloud:
-            write_pointer_file(self.pointer_path, icloud_macsetup)
+            try:
+                write_pointer_file(self.pointer_path, icloud_macsetup)
+            except OSError:
+                return {
+                    "success": False,
+                    "error": "pointer_write_failure",
+                    "message": "Could not write pointer file to redirect config to iCloud.",
+                }
             return {
                 "success": True,
                 "storage": "icloud",
@@ -97,7 +141,14 @@ class InitService:
             }
 
         # Fresh init — no config anywhere
-        write_pointer_file(self.pointer_path, icloud_macsetup)
+        try:
+            write_pointer_file(self.pointer_path, icloud_macsetup)
+        except OSError:
+            return {
+                "success": False,
+                "error": "pointer_write_failure",
+                "message": "Could not write pointer file to redirect config to iCloud.",
+            }
         return {
             "success": True,
             "storage": "icloud",
@@ -106,39 +157,41 @@ class InitService:
             "files_moved": 0,
         }
 
-    def _migrate_to_icloud(self, icloud_macsetup: Path) -> int:
-        """Copy local config files to iCloud and delete local originals.
+    def _copy_to_icloud(self, icloud_macsetup: Path) -> int:
+        """Copy local config files to iCloud.
 
         Args:
             icloud_macsetup: Target iCloud macsetup directory.
 
         Returns:
-            Number of files moved.
+            Number of files copied.
         """
-        files_moved = 0
+        files_copied = 0
 
-        # Copy config.yaml
         local_config = self.default_config_dir / "config.yaml"
         if local_config.is_file():
             shutil.copy2(local_config, icloud_macsetup / "config.yaml")
-            files_moved += 1
+            files_copied += 1
 
-        # Copy dotfiles directory
         local_dotfiles = self.default_config_dir / "dotfiles"
         if local_dotfiles.is_dir():
             target_dotfiles = icloud_macsetup / "dotfiles"
             if target_dotfiles.exists():
                 shutil.rmtree(target_dotfiles)
             shutil.copytree(local_dotfiles, target_dotfiles)
-            files_moved += sum(1 for _ in local_dotfiles.rglob("*") if _.is_file())
+            files_copied += sum(1 for _ in local_dotfiles.rglob("*") if _.is_file())
 
-        # Delete local originals
+        return files_copied
+
+    def _delete_local_originals(self) -> None:
+        """Delete local config files after successful copy to iCloud."""
+        local_config = self.default_config_dir / "config.yaml"
         if local_config.is_file():
             local_config.unlink()
+
+        local_dotfiles = self.default_config_dir / "dotfiles"
         if local_dotfiles.is_dir():
             shutil.rmtree(local_dotfiles)
-
-        return files_moved
 
     def init_local(self) -> dict:
         """Revert to local storage, copying config from iCloud.
@@ -155,22 +208,43 @@ class InitService:
 
         icloud_dir = Path(self.pointer_path.read_text().strip())
 
+        # Pre-flight: verify iCloud directory is accessible before any destructive action
+        if not icloud_dir.is_dir():
+            return {
+                "success": False,
+                "error": "icloud_not_accessible",
+                "message": (
+                    f"iCloud config directory is not accessible: {icloud_dir}\n"
+                    "iCloud Drive may be offline, not signed in, or still syncing.\n"
+                    "The pointer file was preserved. Re-run when iCloud is available."
+                ),
+            }
+
         # Copy config from iCloud to local
-        files_copied = 0
+        try:
+            files_copied = 0
 
-        icloud_config = icloud_dir / "config.yaml"
-        if icloud_config.is_file():
-            self.default_config_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(icloud_config, self.default_config_dir / "config.yaml")
-            files_copied += 1
+            icloud_config = icloud_dir / "config.yaml"
+            if icloud_config.is_file():
+                self.default_config_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(icloud_config, self.default_config_dir / "config.yaml")
+                files_copied += 1
 
-        icloud_dotfiles = icloud_dir / "dotfiles"
-        if icloud_dotfiles.is_dir():
-            target_dotfiles = self.default_config_dir / "dotfiles"
-            if target_dotfiles.exists():
-                shutil.rmtree(target_dotfiles)
-            shutil.copytree(icloud_dotfiles, target_dotfiles)
-            files_copied += sum(1 for _ in icloud_dotfiles.rglob("*") if _.is_file())
+            icloud_dotfiles = icloud_dir / "dotfiles"
+            if icloud_dotfiles.is_dir():
+                target_dotfiles = self.default_config_dir / "dotfiles"
+                if target_dotfiles.exists():
+                    shutil.rmtree(target_dotfiles)
+                shutil.copytree(icloud_dotfiles, target_dotfiles)
+                files_copied += sum(1 for _ in icloud_dotfiles.rglob("*") if _.is_file())
+        except (OSError, shutil.Error) as e:
+            failed_path = getattr(e, "filename", str(self.default_config_dir))
+            return {
+                "success": False,
+                "error": "copy_failure",
+                "message": f"Failed to copy config from iCloud to local storage: {e}",
+                "path": str(failed_path),
+            }
 
         # Delete pointer file (do NOT delete iCloud copy)
         delete_pointer_file(self.pointer_path)

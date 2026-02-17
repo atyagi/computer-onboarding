@@ -496,6 +496,186 @@ class TestInitServiceInitLocal:
         assert result["success"] is False
 
 
+class TestInitLocalPreflightCheck:
+    """Tests for init_local() pre-flight check on iCloud directory (Primary review finding)."""
+
+    def test_errors_when_icloud_dir_not_accessible(self, tmp_path):
+        """init_local() returns error when iCloud directory from pointer file is not accessible."""
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+        pointer = default_dir / "config-dir"
+        pointer.write_text("/nonexistent/icloud/path")
+
+        mock_adapter = MagicMock()
+        service = InitService(icloud_adapter=mock_adapter, default_config_dir=default_dir)
+        result = service.init_local()
+
+        assert result["success"] is False
+        assert result["error"] == "icloud_not_accessible"
+
+    def test_does_not_delete_pointer_when_icloud_unreachable(self, tmp_path):
+        """init_local() does NOT delete the pointer file when iCloud dir is unreachable."""
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+        pointer = default_dir / "config-dir"
+        pointer.write_text("/nonexistent/icloud/path")
+
+        mock_adapter = MagicMock()
+        service = InitService(icloud_adapter=mock_adapter, default_config_dir=default_dir)
+        service.init_local()
+
+        assert pointer.exists(), "Pointer file should NOT be deleted when iCloud is unreachable"
+
+
+class TestInitLocalErrorHandling:
+    """Tests for init_local() error handling for shutil operations (Review item 1)."""
+
+    def test_handles_copy_oserror(self, tmp_path):
+        """init_local() returns structured error when copy fails."""
+        icloud_dir = tmp_path / "icloud_macsetup"
+        icloud_dir.mkdir()
+        (icloud_dir / "config.yaml").write_text("icloud config")
+
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+        pointer = default_dir / "config-dir"
+        pointer.write_text(str(icloud_dir))
+
+        mock_adapter = MagicMock()
+        service = InitService(icloud_adapter=mock_adapter, default_config_dir=default_dir)
+
+        with patch("shutil.copy2", side_effect=OSError("Disk full")):
+            result = service.init_local()
+
+        assert result["success"] is False
+        assert "error" in result
+
+    def test_preserves_pointer_on_copy_failure(self, tmp_path):
+        """init_local() does NOT delete pointer file when copy fails."""
+        icloud_dir = tmp_path / "icloud_macsetup"
+        icloud_dir.mkdir()
+        (icloud_dir / "config.yaml").write_text("icloud config")
+
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+        pointer = default_dir / "config-dir"
+        pointer.write_text(str(icloud_dir))
+
+        mock_adapter = MagicMock()
+        service = InitService(icloud_adapter=mock_adapter, default_config_dir=default_dir)
+
+        with patch("shutil.copy2", side_effect=OSError("Disk full")):
+            service.init_local()
+
+        assert pointer.exists(), "Pointer should not be deleted on copy failure"
+
+
+class TestInitICloudExpandedErrorHandling:
+    """Tests for init_icloud() expanded try/except scope (Review item 4)."""
+
+    def test_handles_mkdir_failure(self, tmp_path):
+        """init_icloud() returns error when mkdir fails."""
+        icloud_drive = tmp_path / "icloud_drive"
+        icloud_drive.mkdir()
+
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+
+        mock_adapter = MagicMock()
+        mock_adapter.is_icloud_available.return_value = True
+        mock_adapter.get_icloud_drive_path.return_value = icloud_drive
+
+        service = InitService(icloud_adapter=mock_adapter, default_config_dir=default_dir)
+
+        with patch.object(Path, "mkdir", side_effect=OSError("Permission denied")):
+            result = service.init_icloud()
+
+        assert result["success"] is False
+
+    def test_handles_pointer_write_failure_after_migration(self, tmp_path):
+        """init_icloud() returns error when pointer write fails after migration."""
+        icloud_drive = tmp_path / "icloud_drive"
+        icloud_drive.mkdir()
+
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+        (default_dir / "config.yaml").write_text("local config")
+
+        mock_adapter = MagicMock()
+        mock_adapter.is_icloud_available.return_value = True
+        mock_adapter.get_icloud_drive_path.return_value = icloud_drive
+
+        service = InitService(icloud_adapter=mock_adapter, default_config_dir=default_dir)
+
+        with patch(
+            "macsetup.services.init.write_pointer_file", side_effect=OSError("Write failed")
+        ):
+            result = service.init_icloud()
+
+        assert result["success"] is False
+
+
+class TestMigrationHasLocalDotfilesCheck:
+    """Tests for has_local checking dotfiles/ in addition to config.yaml (Review item 11)."""
+
+    def test_detects_dotfiles_only_as_local_config(self, tmp_path):
+        """init_icloud() detects local config when only dotfiles/ exists (no config.yaml)."""
+        icloud_drive = tmp_path / "icloud_drive"
+        icloud_drive.mkdir()
+
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+        dotfiles_dir = default_dir / "dotfiles"
+        dotfiles_dir.mkdir()
+        (dotfiles_dir / ".zshrc").write_text("# zshrc")
+
+        mock_adapter = MagicMock()
+        mock_adapter.is_icloud_available.return_value = True
+        mock_adapter.get_icloud_drive_path.return_value = icloud_drive
+
+        service = InitService(icloud_adapter=mock_adapter, default_config_dir=default_dir)
+        result = service.init_icloud()
+
+        # Should have migrated the dotfiles
+        assert result["success"] is True
+        assert result["migrated"] is True
+        icloud_macsetup = icloud_drive / "macsetup"
+        assert (icloud_macsetup / "dotfiles" / ".zshrc").exists()
+
+
+class TestMigrationDeleteFailureSeparation:
+    """Tests for separating copy vs delete failures in migration (Review item 12)."""
+
+    def test_delete_failure_after_successful_copy_not_write_failure(self, tmp_path):
+        """When copy succeeds but delete fails, error should not say 'write_failure'."""
+        icloud_drive = tmp_path / "icloud_drive"
+        icloud_drive.mkdir()
+
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+        (default_dir / "config.yaml").write_text("local config")
+
+        mock_adapter = MagicMock()
+        mock_adapter.is_icloud_available.return_value = True
+        mock_adapter.get_icloud_drive_path.return_value = icloud_drive
+
+        service = InitService(icloud_adapter=mock_adapter, default_config_dir=default_dir)
+
+        original_unlink = Path.unlink
+
+        def fail_unlink(self, *args, **kwargs):
+            if "config.yaml" in str(self):
+                raise OSError("Permission denied")
+            return original_unlink(self, *args, **kwargs)
+
+        with patch.object(Path, "unlink", fail_unlink):
+            result = service.init_icloud()
+
+        # Data should be safe in iCloud, error should indicate cleanup failure not write failure
+        assert result["success"] is False
+        assert result.get("error") != "write_failure"
+
+
 class TestInitServiceEndToEnd:
     """Tests for end-to-end flow (US3 - T024)."""
 

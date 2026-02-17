@@ -1371,6 +1371,84 @@ class TestCmdValidate:
         assert len(output["errors"]) == 1
 
 
+class TestGetConfigDirAbsolutePathValidation:
+    """Tests for get_config_dir() absolute path validation (Review item 2)."""
+
+    def test_errors_on_relative_path_in_pointer_file(self, tmp_path, monkeypatch):
+        """get_config_dir() raises ConfigDirError when pointer file contains a relative path
+        even if that relative path resolves to an existing directory from CWD."""
+        from macsetup.cli import ConfigDirError, get_config_dir
+
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+        pointer_file = default_dir / "config-dir"
+        # Write a relative path that DOES exist from CWD
+        rel_dir = tmp_path / "relative_config"
+        rel_dir.mkdir()
+        pointer_file.write_text("relative_config")
+
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("macsetup.cli.DEFAULT_CONFIG_DIR", default_dir),
+        ):
+            # Change CWD so the relative path resolves to an existing dir
+            monkeypatch.chdir(tmp_path)
+            with pytest.raises(ConfigDirError):
+                get_config_dir()
+
+
+class TestCmdInitNoActionExitCode:
+    """Tests for cmd_init() exit code when no action flag specified (Review item 5)."""
+
+    def test_returns_exit_code_2_when_no_action_flag(self, tmp_path):
+        """cmd_init() returns exit code 2 (usage error) when no --icloud/--local/--status given."""
+        from macsetup.cli import cmd_init
+
+        args = argparse.Namespace(
+            resolved_config_dir=tmp_path,
+            icloud=False,
+            local=False,
+            status=False,
+            force=False,
+            json=False,
+            quiet=True,
+        )
+
+        with patch("macsetup.services.init.InitService"):
+            result = cmd_init(args)
+
+        assert result == 2
+
+
+class TestWarnFunctionsNarrowedException:
+    """Tests for narrowed exception handling in _warn_if_evicted and _warn_conflict_files (Review item 7)."""
+
+    def test_warn_if_evicted_propagates_non_oserror(self, tmp_path):
+        """_warn_if_evicted propagates non-OSError exceptions (programming bugs)."""
+        from macsetup.cli import _warn_if_evicted
+
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "config.yaml").write_text("test")
+
+        with patch("macsetup.adapters.icloud.ICloudAdapter") as mock_cls:
+            mock_cls.return_value.is_file_evicted.side_effect = ValueError("Bug in code")
+            with pytest.raises(ValueError, match="Bug in code"):
+                _warn_if_evicted(config_dir)
+
+    def test_warn_conflict_files_propagates_non_oserror(self, tmp_path):
+        """_warn_conflict_files propagates non-OSError exceptions (programming bugs)."""
+        from macsetup.cli import _warn_conflict_files
+
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+
+        with patch("macsetup.adapters.icloud.ICloudAdapter") as mock_cls:
+            mock_cls.return_value.find_conflict_files.side_effect = ValueError("Bug in code")
+            with pytest.raises(ValueError, match="Bug in code"):
+                _warn_conflict_files(str(config_dir))
+
+
 class TestCmdInit:
     """Tests for cmd_init function (US1 - T012)."""
 

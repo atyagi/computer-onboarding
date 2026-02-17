@@ -78,8 +78,8 @@ def _warn_if_evicted(config_dir: Path) -> None:
                 "or open Finder to trigger download.",
                 file=sys.stderr,
             )
-    except Exception:
-        pass  # Don't let eviction check failures break normal operation
+    except OSError:
+        pass  # Don't let filesystem/iCloud failures break normal operation
 
 
 def _warn_conflict_files(config_dir_str: str) -> None:
@@ -104,7 +104,7 @@ def _warn_conflict_files(config_dir_str: str) -> None:
                 "Please review and remove duplicates.",
                 file=sys.stderr,
             )
-    except Exception:
+    except OSError:
         pass
 
 
@@ -129,6 +129,8 @@ def get_config_dir() -> Path:
     if pointer_path.is_file():
         target = pointer_path.read_text().strip()
         target_path = Path(target)
+        if not target_path.is_absolute():
+            raise ConfigDirError(pointer_path, target)
         if target_path.is_dir():
             # Check for eviction when using iCloud-backed config
             _warn_if_evicted(target_path)
@@ -654,6 +656,9 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     from macsetup.services.init import InitService
 
+    # init deliberately uses DEFAULT_CONFIG_DIR, not args.resolved_config_dir.
+    # The init command manages the pointer file mechanism itself — the pointer
+    # file must live at the canonical location for config resolution to work.
     service = InitService(
         default_config_dir=DEFAULT_CONFIG_DIR,
     )
@@ -750,11 +755,11 @@ def cmd_init(args: argparse.Namespace) -> int:
             print(f'  rm -rf "{icloud_path}"')
         return 0
 
-    # No action flag specified
+    # No action flag specified — usage error
     if not args.quiet and not args.json:
         print("Usage: macsetup init --icloud | --local | --status")
         print("Run 'macsetup init --help' for details.")
-    return 0
+    return 2
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
