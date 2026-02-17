@@ -10,12 +10,134 @@ from macsetup import __version__
 # Default config directory
 DEFAULT_CONFIG_DIR = Path.home() / ".config" / "macsetup"
 
+# Pointer file name within the default config directory
+POINTER_FILE_NAME = "config-dir"
+
+
+class ConfigDirError(Exception):
+    """Raised when the config directory pointer references an unreachable path."""
+
+    def __init__(self, pointer_path: Path, target_path: str):
+        self.pointer_path = pointer_path
+        self.target_path = target_path
+        super().__init__(
+            f"Configuration directory is not accessible: {target_path}\n"
+            f"\n"
+            f"The config directory pointer ({pointer_path}) references a path\n"
+            f"that does not exist or is not accessible.\n"
+            f"\n"
+            f"This may happen if:\n"
+            f"  - iCloud Drive is not enabled on this machine\n"
+            f"  - You are not signed into iCloud\n"
+            f"  - iCloud Drive has not finished syncing\n"
+            f"\n"
+            f"To fix:\n"
+            f"  - Enable iCloud Drive: System Settings > [Your Name] > iCloud\n"
+            f"  - Override temporarily: macsetup --config-dir /path/to/config <command>\n"
+            f"  - Revert to local storage: macsetup init --local"
+        )
+
+
+def write_pointer_file(pointer_path: Path, target_dir: Path) -> None:
+    """Write a pointer file that redirects config directory resolution.
+
+    Args:
+        pointer_path: Path to the pointer file.
+        target_dir: Absolute path to write into the pointer file.
+    """
+    pointer_path.parent.mkdir(parents=True, exist_ok=True)
+    pointer_path.write_text(str(target_dir))
+
+
+def delete_pointer_file(pointer_path: Path) -> None:
+    """Remove the pointer file if it exists.
+
+    Args:
+        pointer_path: Path to the pointer file.
+    """
+    if pointer_path.is_file():
+        pointer_path.unlink()
+
+
+def _warn_if_evicted(config_dir: Path) -> None:
+    """Warn if config.yaml in an iCloud-backed directory is evicted (cloud-only).
+
+    Prints a warning to stderr so it doesn't interfere with JSON output.
+    """
+    config_yaml = config_dir / "config.yaml"
+    if not config_yaml.exists():
+        return
+    try:
+        from macsetup.adapters.icloud import ICloudAdapter
+
+        adapter = ICloudAdapter()
+        if adapter.is_file_evicted(config_yaml):
+            print(
+                "Warning: config.yaml appears to be cloud-only (not downloaded).\n"
+                "iCloud Drive may still be syncing. Wait for sync to complete,\n"
+                "or open Finder to trigger download.",
+                file=sys.stderr,
+            )
+    except OSError:
+        pass  # Don't let filesystem/iCloud failures break normal operation
+
+
+def _warn_conflict_files(config_dir_str: str) -> None:
+    """Warn if iCloud conflict files are found in the config directory."""
+    if not config_dir_str:
+        return
+    try:
+        from macsetup.adapters.icloud import ICloudAdapter
+
+        config_dir = Path(config_dir_str)
+        adapter = ICloudAdapter()
+        conflicts = adapter.find_conflict_files(config_dir)
+        if conflicts:
+            print(
+                f"\nWarning: {len(conflicts)} conflict file(s) found in iCloud config directory:",
+                file=sys.stderr,
+            )
+            for cf in conflicts:
+                print(f"  - {cf.name}", file=sys.stderr)
+            print(
+                "\nThese may indicate sync conflicts between machines. "
+                "Please review and remove duplicates.",
+                file=sys.stderr,
+            )
+    except OSError:
+        pass
+
 
 def get_config_dir() -> Path:
-    """Get the configuration directory, respecting environment variable override."""
+    """Get the configuration directory, respecting precedence order.
+
+    Resolution order:
+    1. MACSETUP_CONFIG_DIR environment variable
+    2. Pointer file at ~/.config/macsetup/config-dir
+    3. Default ~/.config/macsetup
+
+    Raises:
+        ConfigDirError: When pointer file references a nonexistent path.
+    """
+    # 1. Environment variable (highest precedence after CLI flag)
     env_dir = os.environ.get("MACSETUP_CONFIG_DIR")
     if env_dir:
         return Path(env_dir)
+
+    # 2. Pointer file
+    pointer_path = DEFAULT_CONFIG_DIR / POINTER_FILE_NAME
+    if pointer_path.is_file():
+        target = pointer_path.read_text().strip()
+        target_path = Path(target)
+        if not target_path.is_absolute():
+            raise ConfigDirError(pointer_path, target)
+        if target_path.is_dir():
+            # Check for eviction when using iCloud-backed config
+            _warn_if_evicted(target_path)
+            return target_path
+        raise ConfigDirError(pointer_path, target)
+
+    # 3. Default
     return DEFAULT_CONFIG_DIR
 
 
@@ -528,6 +650,118 @@ def cmd_profile(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_init(args: argparse.Namespace) -> int:
+    """Handle the init command."""
+    import json
+
+    from macsetup.services.init import InitService
+
+    # init deliberately uses DEFAULT_CONFIG_DIR, not args.resolved_config_dir.
+    # The init command manages the pointer file mechanism itself — the pointer
+    # file must live at the canonical location for config resolution to work.
+    service = InitService(
+        default_config_dir=DEFAULT_CONFIG_DIR,
+    )
+
+    if args.status:
+        result = service.status()
+        if args.json:
+            print(json.dumps(result, indent=2))
+        elif not args.quiet:
+            storage_label = result["storage"]
+            if storage_label == "local":
+                storage_label = "local (default)"
+            print(f"Storage: {storage_label}")
+            print(f"Config directory: {result['config_dir']}")
+            print(f"Pointer file: {result['pointer_file']}")
+            if "icloud_available" in result:
+                avail = "available" if result["icloud_available"] else "not available"
+                print(f"iCloud Drive: {avail}")
+        return 0
+
+    if args.icloud:
+        result = service.init_icloud(force=args.force)
+        if not result["success"]:
+            if args.json:
+                print(json.dumps(result, indent=2))
+            elif not args.quiet:
+                error_msg = result.get("message", result.get("error", "Unknown error"))
+                print(f"Error: {error_msg}")
+                if result.get("error") == "icloud_not_available":
+                    print()
+                    print("Remediation:")
+                    print("  1. Open System Settings > [Your Name] > iCloud")
+                    print("  2. Enable iCloud Drive")
+                    print("  3. Re-run: macsetup init --icloud")
+                elif result.get("error") == "conflict":
+                    print()
+                    local_path = result.get("local_path", "")
+                    icloud_path = result.get("icloud_path", "")
+                    print(f"  Local:  {local_path}")
+                    print(f"  iCloud: {icloud_path}")
+                    print()
+                    print("To overwrite the iCloud config with your local config:")
+                    print("  macsetup init --icloud --force")
+                    print()
+                    print("To keep the iCloud config (discard local):")
+                    print(f"  rm {local_path} && macsetup init --icloud")
+            # Exit code: 1 for iCloud unavailable, 2 for conflict
+            return 2 if result.get("error") == "conflict" else 1
+
+        if args.json:
+            print(json.dumps(result, indent=2))
+        elif not args.quiet:
+            if result.get("migrated"):
+                print("Migrating configuration to iCloud Drive...")
+                # File-by-file progress handled in Phase 4
+                print()
+            elif result.get("existing_config"):
+                print("Found existing configuration in iCloud Drive.")
+                summary = result.get("config_summary", "")
+                if summary:
+                    print(f"  {summary}")
+                print()
+            else:
+                config_dir = result["config_dir"]
+                print(f"Initialized iCloud storage at {config_dir}")
+
+            print("All macsetup commands will now use iCloud storage.")
+
+        # Warn about conflict files in iCloud directory
+        if not args.json:
+            _warn_conflict_files(result.get("config_dir", ""))
+
+        return 0
+
+    if args.local:
+        result = service.init_local()
+        if not result["success"]:
+            if args.json:
+                print(json.dumps(result, indent=2))
+            elif not args.quiet:
+                print(f"Error: {result.get('message', result.get('error', 'Unknown error'))}")
+            return 1
+
+        if args.json:
+            print(json.dumps(result, indent=2))
+        elif not args.quiet:
+            print("Copying configuration from iCloud to local storage...")
+            print()
+            print(f"Configuration restored to {result['config_dir']}")
+            print("All macsetup commands will now use local storage.")
+            print()
+            print("Note: Your iCloud copy was not deleted. To remove it:")
+            icloud_path = result.get("icloud_dir", "")
+            print(f'  rm -rf "{icloud_path}"')
+        return 0
+
+    # No action flag specified — usage error
+    if not args.quiet and not args.json:
+        print("Usage: macsetup init --icloud | --local | --status")
+        print("Run 'macsetup init --help' for details.")
+    return 2
+
+
 def cmd_validate(args: argparse.Namespace) -> int:
     """Handle the validate command."""
     import json
@@ -585,6 +819,34 @@ def create_parser() -> argparse.ArgumentParser:
     add_global_options(parser)
 
     subparsers = parser.add_subparsers(dest="command", title="commands")
+
+    # init command
+    init_parser = subparsers.add_parser(
+        "init",
+        help="Initialize or change storage backend",
+        description="Initialize or change the storage backend for macsetup configuration.",
+    )
+    init_parser.add_argument(
+        "--icloud",
+        action="store_true",
+        help="Set up iCloud Drive as the config storage location",
+    )
+    init_parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Revert to local storage, copying config from iCloud",
+    )
+    init_parser.add_argument(
+        "--status",
+        action="store_true",
+        help="Show current storage configuration",
+    )
+    init_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing iCloud config on conflict",
+    )
+    init_parser.set_defaults(func=cmd_init)
 
     # capture command
     capture_parser = subparsers.add_parser(
@@ -783,7 +1045,20 @@ def main(args: list[str] | None = None) -> int:
         return 0
 
     # Resolve config directory
-    config_dir = parsed.config_dir or get_config_dir()
+    try:
+        config_dir = parsed.config_dir or get_config_dir()
+    except ConfigDirError as e:
+        # init command handles its own path resolution — don't raise here
+        if parsed.command == "init":
+            config_dir = DEFAULT_CONFIG_DIR
+        else:
+            if getattr(parsed, "json", False):
+                import json
+
+                print(json.dumps({"success": False, "error": str(e)}))
+            else:
+                print(f"Error: {e}")
+            return 1
 
     # Store resolved config dir in namespace for commands to use
     parsed.resolved_config_dir = config_dir

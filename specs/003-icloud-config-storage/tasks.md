@@ -19,10 +19,10 @@
 
 **Purpose**: Create new module files and establish test scaffolding
 
-- [ ] T001 [P] Create iCloud adapter module at src/macsetup/adapters/icloud.py with ICloudAdapter class skeleton as a standalone class (NOT extending Adapter — iCloud is a filesystem path, not a CLI tool). Methods: is_icloud_available() -> bool, get_icloud_drive_path() -> Path.
-- [ ] T002 [P] Create init service module at src/macsetup/services/init.py with InitService class skeleton
-- [ ] T003 [P] Create test file at tests/unit/test_icloud.py with test class scaffolding for ICloudAdapter
-- [ ] T004 [P] Create test file at tests/unit/test_init.py with test class scaffolding for InitService
+- [X] T001 [P] Create iCloud adapter module at src/macsetup/adapters/icloud.py with ICloudAdapter class skeleton as a standalone class (NOT extending Adapter — iCloud is a filesystem path, not a CLI tool). Methods: is_icloud_available() -> bool, get_icloud_drive_path() -> Path.
+- [X] T002 [P] Create init service module at src/macsetup/services/init.py with InitService class skeleton
+- [X] T003 [P] Create test file at tests/unit/test_icloud.py with test class scaffolding for ICloudAdapter
+- [X] T004 [P] Create test file at tests/unit/test_init.py with test class scaffolding for InitService
 
 ---
 
@@ -36,14 +36,14 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T005 [P] Write tests for iCloud Drive path resolution and availability detection in tests/unit/test_icloud.py: test get_icloud_drive_path() returns correct Path, test is_icloud_available() returns True when dir exists, test is_icloud_available() returns False when dir absent, test is_icloud_available() returns False when path exists but is a file (not directory), test is_icloud_available() returns False when path is a symlink to nonexistent target
-- [ ] T006 [P] Write tests for pointer file reading in tests/unit/test_cli.py: test get_config_dir() reads pointer file when present, test get_config_dir() returns default when pointer absent, test get_config_dir() CLI flag overrides pointer, test get_config_dir() env var overrides pointer, test get_config_dir() errors when pointer references nonexistent path
+- [X] T005 [P] Write tests for iCloud Drive path resolution and availability detection in tests/unit/test_icloud.py: test get_icloud_drive_path() returns correct Path, test is_icloud_available() returns True when dir exists, test is_icloud_available() returns False when dir absent, test is_icloud_available() returns False when path exists but is a file (not directory), test is_icloud_available() returns False when path is a symlink to nonexistent target
+- [X] T006 [P] Write tests for pointer file reading in tests/unit/test_cli.py: test get_config_dir() reads pointer file when present, test get_config_dir() returns default when pointer absent, test get_config_dir() CLI flag overrides pointer, test get_config_dir() env var overrides pointer, test get_config_dir() errors when pointer references nonexistent path
 
 ### Implementation for Foundational
 
-- [ ] T007 [P] Implement get_icloud_drive_path() and is_icloud_available() in src/macsetup/adapters/icloud.py using Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs" with is_dir() check per research.md
-- [ ] T008 Implement pointer file reading in get_config_dir() in src/macsetup/cli.py: read ~/.config/macsetup/config-dir, validate path is absolute and exists, return path if valid; maintain precedence order: CLI flag > env var > pointer > default per data-model.md resolution order
-- [ ] T009 Implement ConfigDirError exception class in src/macsetup/cli.py with error message and remediation suggestions per contracts/cli-contract.md error output format. Raise ConfigDirError from get_config_dir() when the pointer references an unreachable path. Wire a ConfigDirError catch in main() that formats the error per the contract and exits with code 1. Guard the catch so that when parsed.command == "init", ConfigDirError is NOT raised — init handles its own path resolution (see T016). All main() changes for ConfigDirError and init exemption happen in THIS task.
+- [X] T007 [P] Implement get_icloud_drive_path() and is_icloud_available() in src/macsetup/adapters/icloud.py using Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs" with is_dir() check per research.md
+- [X] T008 Implement pointer file reading in get_config_dir() in src/macsetup/cli.py: read ~/.config/macsetup/config-dir, validate path is absolute and exists, return path if valid; maintain precedence order: CLI flag > env var > pointer > default per data-model.md resolution order
+- [X] T009 Implement ConfigDirError exception class in src/macsetup/cli.py with error message and remediation suggestions per contracts/cli-contract.md error output format. Raise ConfigDirError from get_config_dir() when the pointer references an unreachable path. Wire a ConfigDirError catch in main() that formats the error per the contract and exits with code 1. Guard the catch so that when parsed.command == "init", ConfigDirError is NOT raised — init handles its own path resolution (see T016). All main() changes for ConfigDirError and init exemption happen in THIS task.
 
 **Checkpoint**: Pointer file resolution works, iCloud detection works. All existing commands still function normally (no pointer file = no behavior change).
 
@@ -59,17 +59,17 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Write tests for InitService.init_icloud() fresh case in tests/unit/test_init.py: test creates iCloud macsetup dir, test writes pointer file, test errors when iCloud unavailable with remediation message
-- [ ] T011 [P] [US1] Write tests for InitService.status() in tests/unit/test_init.py: test returns "local" when no pointer file, test returns "icloud" with path when pointer exists
-- [ ] T012 [P] [US1] Write tests for cmd_init in tests/unit/test_cli.py: test --icloud flag routes to InitService.init_icloud(), test --status flag routes to InitService.status(), test --json flag produces JSON output, test --quiet suppresses output, test exit code 1 when iCloud unavailable
+- [X] T010 [P] [US1] Write tests for InitService.init_icloud() fresh case in tests/unit/test_init.py: test creates iCloud macsetup dir, test writes pointer file, test errors when iCloud unavailable with remediation message
+- [X] T011 [P] [US1] Write tests for InitService.status() in tests/unit/test_init.py: test returns "local" when no pointer file, test returns "icloud" with path when pointer exists
+- [X] T012 [P] [US1] Write tests for cmd_init in tests/unit/test_cli.py: test --icloud flag routes to InitService.init_icloud(), test --status flag routes to InitService.status(), test --json flag produces JSON output, test --quiet suppresses output, test exit code 1 when iCloud unavailable
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Implement pointer file write and delete utilities in src/macsetup/cli.py (co-located with pointer file reading in get_config_dir): write_pointer_file(pointer_path, target_dir) writes absolute path to file, delete_pointer_file(pointer_path) removes pointer file. These are NOT iCloud-specific — the pointer mechanism is general config directory indirection — so they belong alongside the read logic, not in the iCloud adapter.
-- [ ] T014 [US1] Implement InitService.init_icloud() for fresh case in src/macsetup/services/init.py: check iCloud available via ICloudAdapter, create iCloud macsetup dir, write pointer file, return result with storage type and path
-- [ ] T015 [US1] Implement InitService.status() in src/macsetup/services/init.py: check if pointer file exists, read current storage location, check iCloud availability, return status dict per contracts/cli-contract.md JSON format
-- [ ] T016 [US1] Implement cmd_init() handler in src/macsetup/cli.py: dispatch to InitService based on flags, format human/JSON output per contracts/cli-contract.md, set exit codes (0=success, 1=iCloud unavailable, 2=conflict). Note: main() already exempts the init command from ConfigDirError (wired in T009).
-- [ ] T017 [US1] Add init subcommand parser to create_parser() in src/macsetup/cli.py: --icloud flag, --local flag, --status flag, --force flag, --quiet/--json global flags, --help text per contracts/cli-contract.md usage section
+- [X] T013 [US1] Implement pointer file write and delete utilities in src/macsetup/cli.py (co-located with pointer file reading in get_config_dir): write_pointer_file(pointer_path, target_dir) writes absolute path to file, delete_pointer_file(pointer_path) removes pointer file. These are NOT iCloud-specific — the pointer mechanism is general config directory indirection — so they belong alongside the read logic, not in the iCloud adapter.
+- [X] T014 [US1] Implement InitService.init_icloud() for fresh case in src/macsetup/services/init.py: check iCloud available via ICloudAdapter, create iCloud macsetup dir, write pointer file, return result with storage type and path
+- [X] T015 [US1] Implement InitService.status() in src/macsetup/services/init.py: check if pointer file exists, read current storage location, check iCloud availability, return status dict per contracts/cli-contract.md JSON format
+- [X] T016 [US1] Implement cmd_init() handler in src/macsetup/cli.py: dispatch to InitService based on flags, format human/JSON output per contracts/cli-contract.md, set exit codes (0=success, 1=iCloud unavailable, 2=conflict). Note: main() already exempts the init command from ConfigDirError (wired in T009).
+- [X] T017 [US1] Add init subcommand parser to create_parser() in src/macsetup/cli.py: --icloud flag, --local flag, --status flag, --force flag, --quiet/--json global flags, --help text per contracts/cli-contract.md usage section
 
 **Checkpoint**: `macsetup init --icloud` works on a fresh machine (no existing config). `macsetup init --status` reports current storage. All existing commands transparently use iCloud when pointer is set.
 
@@ -85,16 +85,16 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T018 [P] [US2] Write tests for InitService.init_icloud() migration case in tests/unit/test_init.py: test moves config.yaml to iCloud dir, test moves dotfiles/ directory tree to iCloud dir, test deletes local files after copy, test preserves file contents during migration, test pointer file is written after move
-- [ ] T019 [P] [US2] Write tests for conflict detection in tests/unit/test_init.py: test errors when both local and iCloud config.yaml exist (no --force), test --force overwrites iCloud config with local, test error message includes both config paths and timestamps per contracts/cli-contract.md conflict output
-- [ ] T019a [P] [US2] Write tests for write failure handling in tests/unit/test_init.py: test init_icloud() reports error when shutil.copy raises OSError during migration, test error message includes specific path that failed, test error message suggests "iCloud Drive may be full or read-only", test exit code 1 on write failure
+- [X] T018 [P] [US2] Write tests for InitService.init_icloud() migration case in tests/unit/test_init.py: test moves config.yaml to iCloud dir, test moves dotfiles/ directory tree to iCloud dir, test deletes local files after copy, test preserves file contents during migration, test pointer file is written after move
+- [X] T019 [P] [US2] Write tests for conflict detection in tests/unit/test_init.py: test errors when both local and iCloud config.yaml exist (no --force), test --force overwrites iCloud config with local, test error message includes both config paths and timestamps per contracts/cli-contract.md conflict output
+- [X] T019a [P] [US2] Write tests for write failure handling in tests/unit/test_init.py: test init_icloud() reports error when shutil.copy raises OSError during migration, test error message includes specific path that failed, test error message suggests "iCloud Drive may be full or read-only", test exit code 1 on write failure
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Implement migration logic in InitService.init_icloud() in src/macsetup/services/init.py: detect existing local config (config.yaml in default dir), copy config.yaml and dotfiles/ to iCloud dir using shutil, delete local originals after successful copy, write pointer file
-- [ ] T021 [US2] Implement conflict detection in InitService.init_icloud() in src/macsetup/services/init.py: check if iCloud macsetup/config.yaml already exists, check if local config.yaml exists, if both exist and no --force: return error with exit code 2, if --force: overwrite iCloud with local then delete local
-- [ ] T022 [US2] Update cmd_init() in src/macsetup/cli.py to handle migration and conflict output: display file-by-file progress during migration, display conflict error with remediation per contracts/cli-contract.md, set exit code 2 for conflict
-- [ ] T022a [US2] Handle write failures during migration in InitService.init_icloud(): catch OSError/shutil.Error from copy/mkdir operations, report "iCloud Drive may be full or read-only" with the specific path that failed, exit code 1. Covers spec edge case: "user's iCloud storage is full."
+- [X] T020 [US2] Implement migration logic in InitService.init_icloud() in src/macsetup/services/init.py: detect existing local config (config.yaml in default dir), copy config.yaml and dotfiles/ to iCloud dir using shutil, delete local originals after successful copy, write pointer file
+- [X] T021 [US2] Implement conflict detection in InitService.init_icloud() in src/macsetup/services/init.py: check if iCloud macsetup/config.yaml already exists, check if local config.yaml exists, if both exist and no --force: return error with exit code 2, if --force: overwrite iCloud with local then delete local
+- [X] T022 [US2] Update cmd_init() in src/macsetup/cli.py to handle migration and conflict output: display file-by-file progress during migration, display conflict error with remediation per contracts/cli-contract.md, set exit code 2 for conflict
+- [X] T022a [US2] Handle write failures during migration in InitService.init_icloud(): catch OSError/shutil.Error from copy/mkdir operations, report "iCloud Drive may be full or read-only" with the specific path that failed, exit code 1. Covers spec edge case: "user's iCloud storage is full."
 
 **Checkpoint**: Existing users can migrate to iCloud with a single command. Conflicts are detected and reported clearly.
 
@@ -110,13 +110,13 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T023 [P] [US3] Write tests for InitService.init_icloud() existing iCloud config case in tests/unit/test_init.py: test detects existing config.yaml in iCloud dir, test writes pointer file without moving/copying anything, test returns success with storage type "icloud", test reports existing config summary (profile name)
-- [ ] T024 [P] [US3] Write tests for end-to-end flow in tests/unit/test_init.py: test init_icloud with existing iCloud config then get_config_dir resolves to iCloud path
+- [X] T023 [P] [US3] Write tests for InitService.init_icloud() existing iCloud config case in tests/unit/test_init.py: test detects existing config.yaml in iCloud dir, test writes pointer file without moving/copying anything, test returns success with storage type "icloud", test reports existing config summary (profile name)
+- [X] T024 [P] [US3] Write tests for end-to-end flow in tests/unit/test_init.py: test init_icloud with existing iCloud config then get_config_dir resolves to iCloud path
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Add existing iCloud config detection to InitService.init_icloud() in src/macsetup/services/init.py: when no local config exists but iCloud macsetup/config.yaml exists, write pointer file to use existing iCloud config, load config to report summary (profile name, counts)
-- [ ] T026 [US3] Update cmd_init() output in src/macsetup/cli.py for existing iCloud config case: display "Found existing configuration in iCloud Drive" message with config summary per contracts/cli-contract.md
+- [X] T025 [US3] Add existing iCloud config detection to InitService.init_icloud() in src/macsetup/services/init.py: when no local config exists but iCloud macsetup/config.yaml exists, write pointer file to use existing iCloud config, load config to report summary (profile name, counts)
+- [X] T026 [US3] Update cmd_init() output in src/macsetup/cli.py for existing iCloud config case: display "Found existing configuration in iCloud Drive" message with config summary per contracts/cli-contract.md
 
 **Checkpoint**: New Mac users can connect to their synced config with one command. Full restore flow works: init --icloud → setup.
 
@@ -132,13 +132,13 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T027 [P] [US4] Write tests for InitService.init_local() in tests/unit/test_init.py: test copies config.yaml from iCloud to default local dir, test copies dotfiles/ from iCloud to default local dir, test deletes pointer file, test does NOT delete iCloud copy, test errors when not currently using iCloud (no pointer file)
-- [ ] T028 [P] [US4] Write tests for cmd_init --local in tests/unit/test_cli.py: test --local flag routes to InitService.init_local(), test human output matches contracts/cli-contract.md, test JSON output format, test exit code 1 when no pointer file exists
+- [X] T027 [P] [US4] Write tests for InitService.init_local() in tests/unit/test_init.py: test copies config.yaml from iCloud to default local dir, test copies dotfiles/ from iCloud to default local dir, test deletes pointer file, test does NOT delete iCloud copy, test errors when not currently using iCloud (no pointer file)
+- [X] T028 [P] [US4] Write tests for cmd_init --local in tests/unit/test_cli.py: test --local flag routes to InitService.init_local(), test human output matches contracts/cli-contract.md, test JSON output format, test exit code 1 when no pointer file exists
 
 ### Implementation for User Story 4
 
-- [ ] T029 [US4] Implement InitService.init_local() in src/macsetup/services/init.py: read pointer file to find current iCloud path, copy config.yaml and dotfiles/ from iCloud to default local dir, delete pointer file, return result with files_copied count, error if no pointer file exists
-- [ ] T030 [US4] Wire cmd_init --local in src/macsetup/cli.py: route --local flag to InitService.init_local(), display file-by-file copy progress, show note about iCloud copy not being deleted per contracts/cli-contract.md
+- [X] T029 [US4] Implement InitService.init_local() in src/macsetup/services/init.py: read pointer file to find current iCloud path, copy config.yaml and dotfiles/ from iCloud to default local dir, delete pointer file, return result with files_copied count, error if no pointer file exists
+- [X] T030 [US4] Wire cmd_init --local in src/macsetup/cli.py: route --local flag to InitService.init_local(), display file-by-file copy progress, show note about iCloud copy not being deleted per contracts/cli-contract.md
 
 **Checkpoint**: Users can freely switch between iCloud and local storage without data loss.
 
@@ -148,14 +148,14 @@
 
 **Purpose**: Edge case handling, eviction/conflict detection, documentation
 
-- [ ] T031 [P] Write tests for file eviction detection in tests/unit/test_icloud.py: test is_file_evicted() returns True when SF_DATALESS flag set, test is_file_evicted() returns False for local files, test fallback heuristic (st_blocks==0, st_size>0)
-- [ ] T032 [P] Write tests for conflict file detection in tests/unit/test_icloud.py: test find_conflict_files() detects "config 2.yaml" pattern, test find_conflict_files() ignores non-conflict files
-- [ ] T033 [P] Implement is_file_evicted() in src/macsetup/adapters/icloud.py using stat.SF_DATALESS (0x40000000) flag check with st_blocks==0 heuristic fallback per research.md
-- [ ] T034 [P] Implement find_conflict_files() in src/macsetup/adapters/icloud.py using regex pattern `{basename} {N}.{ext}` where N >= 2 per research.md
-- [ ] T035 Add eviction warning to get_config_dir() in src/macsetup/cli.py: when pointer references iCloud path, check config.yaml for eviction, warn user if files are cloud-only with suggestion to wait for sync
-- [ ] T036 Add conflict file warning to cmd_init() in src/macsetup/cli.py: after successful init, scan iCloud macsetup dir for conflict files, warn user if any detected
-- [ ] T037 Verify --help output for init command covers all options and matches contracts/cli-contract.md usage section
-- [ ] T038 Run full test suite and verify all existing tests still pass (no regressions from get_config_dir changes)
+- [X] T031 [P] Write tests for file eviction detection in tests/unit/test_icloud.py: test is_file_evicted() returns True when SF_DATALESS flag set, test is_file_evicted() returns False for local files, test fallback heuristic (st_blocks==0, st_size>0)
+- [X] T032 [P] Write tests for conflict file detection in tests/unit/test_icloud.py: test find_conflict_files() detects "config 2.yaml" pattern, test find_conflict_files() ignores non-conflict files
+- [X] T033 [P] Implement is_file_evicted() in src/macsetup/adapters/icloud.py using stat.SF_DATALESS (0x40000000) flag check with st_blocks==0 heuristic fallback per research.md
+- [X] T034 [P] Implement find_conflict_files() in src/macsetup/adapters/icloud.py using regex pattern `{basename} {N}.{ext}` where N >= 2 per research.md
+- [X] T035 Add eviction warning to get_config_dir() in src/macsetup/cli.py: when pointer references iCloud path, check config.yaml for eviction, warn user if files are cloud-only with suggestion to wait for sync
+- [X] T036 Add conflict file warning to cmd_init() in src/macsetup/cli.py: after successful init, scan iCloud macsetup dir for conflict files, warn user if any detected
+- [X] T037 Verify --help output for init command covers all options and matches contracts/cli-contract.md usage section
+- [X] T038 Run full test suite and verify all existing tests still pass (no regressions from get_config_dir changes)
 
 ---
 

@@ -60,6 +60,113 @@ class TestGetConfigDir:
             result = get_config_dir()
             assert result == Path("/custom/path")
 
+    def test_reads_pointer_file_when_present(self, tmp_path):
+        """get_config_dir() reads pointer file and returns the path it contains."""
+        from macsetup.cli import get_config_dir
+
+        # Set up pointer file pointing to an icloud-like dir
+        icloud_dir = tmp_path / "icloud_macsetup"
+        icloud_dir.mkdir()
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+        pointer_file = default_dir / "config-dir"
+        pointer_file.write_text(str(icloud_dir))
+
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("macsetup.cli.DEFAULT_CONFIG_DIR", default_dir),
+        ):
+            result = get_config_dir()
+            assert result == icloud_dir
+
+    def test_returns_default_when_pointer_absent(self, tmp_path):
+        """get_config_dir() returns default when no pointer file exists."""
+        from macsetup.cli import get_config_dir
+
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("macsetup.cli.DEFAULT_CONFIG_DIR", default_dir),
+        ):
+            result = get_config_dir()
+            assert result == default_dir
+
+    def test_cli_flag_overrides_pointer(self, tmp_path):
+        """--config-dir CLI flag takes precedence over pointer file."""
+        from macsetup.cli import main
+
+        # Set up pointer file
+        icloud_dir = tmp_path / "icloud_macsetup"
+        icloud_dir.mkdir()
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+        pointer_file = default_dir / "config-dir"
+        pointer_file.write_text(str(icloud_dir))
+
+        cli_override = tmp_path / "cli_override"
+        cli_override.mkdir()
+        create_valid_config(cli_override)
+
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("macsetup.cli.DEFAULT_CONFIG_DIR", default_dir),
+            patch("macsetup.services.setup.SetupService") as mock_cls,
+        ):
+            mock_service = MagicMock()
+            mock_service.run.return_value = MagicMock(
+                success=True,
+                completed_count=0,
+                failed_count=0,
+                failed_items=[],
+                manual_apps=[],
+                interrupted=False,
+            )
+            mock_cls.return_value = mock_service
+
+            main(["--config-dir", str(cli_override), "--quiet", "setup"])
+            call_kwargs = mock_cls.call_args[1]
+            assert call_kwargs["config_dir"] == cli_override
+
+    def test_env_var_overrides_pointer(self, tmp_path):
+        """MACSETUP_CONFIG_DIR env var takes precedence over pointer file."""
+        from macsetup.cli import get_config_dir
+
+        # Set up pointer file
+        icloud_dir = tmp_path / "icloud_macsetup"
+        icloud_dir.mkdir()
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+        pointer_file = default_dir / "config-dir"
+        pointer_file.write_text(str(icloud_dir))
+
+        env_override = tmp_path / "env_override"
+        env_override.mkdir()
+
+        with (
+            patch.dict("os.environ", {"MACSETUP_CONFIG_DIR": str(env_override)}),
+            patch("macsetup.cli.DEFAULT_CONFIG_DIR", default_dir),
+        ):
+            result = get_config_dir()
+            assert result == env_override
+
+    def test_errors_when_pointer_references_nonexistent_path(self, tmp_path):
+        """get_config_dir() raises ConfigDirError when pointer references nonexistent path."""
+        from macsetup.cli import ConfigDirError, get_config_dir
+
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+        pointer_file = default_dir / "config-dir"
+        pointer_file.write_text("/nonexistent/path/that/does/not/exist")
+
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("macsetup.cli.DEFAULT_CONFIG_DIR", default_dir),
+        ):
+            with pytest.raises(ConfigDirError):
+                get_config_dir()
+
 
 class TestCmdSetup:
     """Tests for cmd_setup function."""
@@ -1262,3 +1369,330 @@ class TestCmdValidate:
         output = json.loads(capsys.readouterr().out)
         assert output["valid"] is False
         assert len(output["errors"]) == 1
+
+
+class TestGetConfigDirAbsolutePathValidation:
+    """Tests for get_config_dir() absolute path validation (Review item 2)."""
+
+    def test_errors_on_relative_path_in_pointer_file(self, tmp_path, monkeypatch):
+        """get_config_dir() raises ConfigDirError when pointer file contains a relative path
+        even if that relative path resolves to an existing directory from CWD."""
+        from macsetup.cli import ConfigDirError, get_config_dir
+
+        default_dir = tmp_path / "default_config"
+        default_dir.mkdir()
+        pointer_file = default_dir / "config-dir"
+        # Write a relative path that DOES exist from CWD
+        rel_dir = tmp_path / "relative_config"
+        rel_dir.mkdir()
+        pointer_file.write_text("relative_config")
+
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("macsetup.cli.DEFAULT_CONFIG_DIR", default_dir),
+        ):
+            # Change CWD so the relative path resolves to an existing dir
+            monkeypatch.chdir(tmp_path)
+            with pytest.raises(ConfigDirError):
+                get_config_dir()
+
+
+class TestCmdInitNoActionExitCode:
+    """Tests for cmd_init() exit code when no action flag specified (Review item 5)."""
+
+    def test_returns_exit_code_2_when_no_action_flag(self, tmp_path):
+        """cmd_init() returns exit code 2 (usage error) when no --icloud/--local/--status given."""
+        from macsetup.cli import cmd_init
+
+        args = argparse.Namespace(
+            resolved_config_dir=tmp_path,
+            icloud=False,
+            local=False,
+            status=False,
+            force=False,
+            json=False,
+            quiet=True,
+        )
+
+        with patch("macsetup.services.init.InitService"):
+            result = cmd_init(args)
+
+        assert result == 2
+
+
+class TestWarnFunctionsNarrowedException:
+    """Tests for narrowed exception handling in _warn_if_evicted and _warn_conflict_files (Review item 7)."""
+
+    def test_warn_if_evicted_propagates_non_oserror(self, tmp_path):
+        """_warn_if_evicted propagates non-OSError exceptions (programming bugs)."""
+        from macsetup.cli import _warn_if_evicted
+
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "config.yaml").write_text("test")
+
+        with patch("macsetup.adapters.icloud.ICloudAdapter") as mock_cls:
+            mock_cls.return_value.is_file_evicted.side_effect = ValueError("Bug in code")
+            with pytest.raises(ValueError, match="Bug in code"):
+                _warn_if_evicted(config_dir)
+
+    def test_warn_conflict_files_propagates_non_oserror(self, tmp_path):
+        """_warn_conflict_files propagates non-OSError exceptions (programming bugs)."""
+        from macsetup.cli import _warn_conflict_files
+
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+
+        with patch("macsetup.adapters.icloud.ICloudAdapter") as mock_cls:
+            mock_cls.return_value.find_conflict_files.side_effect = ValueError("Bug in code")
+            with pytest.raises(ValueError, match="Bug in code"):
+                _warn_conflict_files(str(config_dir))
+
+
+class TestCmdInit:
+    """Tests for cmd_init function (US1 - T012)."""
+
+    def test_icloud_flag_routes_to_init_icloud(self, tmp_path):
+        """--icloud flag routes to InitService.init_icloud()."""
+        from macsetup.cli import cmd_init
+
+        args = argparse.Namespace(
+            resolved_config_dir=tmp_path,
+            icloud=True,
+            local=False,
+            status=False,
+            force=False,
+            json=False,
+            quiet=True,
+        )
+
+        with patch("macsetup.services.init.InitService") as mock_cls:
+            mock_service = mock_cls.return_value
+            mock_service.init_icloud.return_value = {
+                "success": True,
+                "storage": "icloud",
+                "config_dir": str(tmp_path / "icloud"),
+                "migrated": False,
+                "files_moved": 0,
+            }
+            result = cmd_init(args)
+
+        assert result == 0
+        mock_service.init_icloud.assert_called_once()
+
+    def test_status_flag_routes_to_status(self, tmp_path):
+        """--status flag routes to InitService.status()."""
+        from macsetup.cli import cmd_init
+
+        args = argparse.Namespace(
+            resolved_config_dir=tmp_path,
+            icloud=False,
+            local=False,
+            status=True,
+            force=False,
+            json=False,
+            quiet=False,
+        )
+
+        with patch("macsetup.services.init.InitService") as mock_cls:
+            mock_service = mock_cls.return_value
+            mock_service.status.return_value = {
+                "storage": "local",
+                "config_dir": str(tmp_path),
+                "pointer_file": "not set",
+            }
+            result = cmd_init(args)
+
+        assert result == 0
+        mock_service.status.assert_called_once()
+
+    def test_json_flag_produces_json_output(self, tmp_path, capsys):
+        """--json flag produces JSON output."""
+        from macsetup.cli import cmd_init
+
+        args = argparse.Namespace(
+            resolved_config_dir=tmp_path,
+            icloud=False,
+            local=False,
+            status=True,
+            force=False,
+            json=True,
+            quiet=False,
+        )
+
+        with patch("macsetup.services.init.InitService") as mock_cls:
+            mock_service = mock_cls.return_value
+            mock_service.status.return_value = {
+                "storage": "local",
+                "config_dir": str(tmp_path),
+                "pointer_file": "not set",
+            }
+            cmd_init(args)
+
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        assert output["storage"] == "local"
+
+    def test_quiet_suppresses_output(self, tmp_path, capsys):
+        """--quiet suppresses output."""
+        from macsetup.cli import cmd_init
+
+        args = argparse.Namespace(
+            resolved_config_dir=tmp_path,
+            icloud=True,
+            local=False,
+            status=False,
+            force=False,
+            json=False,
+            quiet=True,
+        )
+
+        with patch("macsetup.services.init.InitService") as mock_cls:
+            mock_service = mock_cls.return_value
+            mock_service.init_icloud.return_value = {
+                "success": True,
+                "storage": "icloud",
+                "config_dir": str(tmp_path / "icloud"),
+                "migrated": False,
+                "files_moved": 0,
+            }
+            cmd_init(args)
+
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
+    def test_exit_code_1_when_icloud_unavailable(self, tmp_path):
+        """Exit code 1 when iCloud Drive is not available."""
+        from macsetup.cli import cmd_init
+
+        args = argparse.Namespace(
+            resolved_config_dir=tmp_path,
+            icloud=True,
+            local=False,
+            status=False,
+            force=False,
+            json=False,
+            quiet=True,
+        )
+
+        with patch("macsetup.services.init.InitService") as mock_cls:
+            mock_service = mock_cls.return_value
+            mock_service.init_icloud.return_value = {
+                "success": False,
+                "error": "icloud_not_available",
+                "message": "iCloud Drive is not available",
+            }
+            result = cmd_init(args)
+
+        assert result == 1
+
+    def test_local_flag_routes_to_init_local(self, tmp_path):
+        """--local flag routes to InitService.init_local()."""
+        from macsetup.cli import cmd_init
+
+        args = argparse.Namespace(
+            resolved_config_dir=tmp_path,
+            icloud=False,
+            local=True,
+            status=False,
+            force=False,
+            json=False,
+            quiet=True,
+        )
+
+        with patch("macsetup.services.init.InitService") as mock_cls:
+            mock_service = mock_cls.return_value
+            mock_service.init_local.return_value = {
+                "success": True,
+                "storage": "local",
+                "config_dir": str(tmp_path),
+                "files_copied": 3,
+                "icloud_dir": str(tmp_path / "icloud"),
+            }
+            result = cmd_init(args)
+
+        assert result == 0
+        mock_service.init_local.assert_called_once()
+
+    def test_local_human_output(self, tmp_path, capsys):
+        """--local human output matches contract format."""
+        from macsetup.cli import cmd_init
+
+        args = argparse.Namespace(
+            resolved_config_dir=tmp_path,
+            icloud=False,
+            local=True,
+            status=False,
+            force=False,
+            json=False,
+            quiet=False,
+        )
+
+        with patch("macsetup.services.init.InitService") as mock_cls:
+            mock_service = mock_cls.return_value
+            mock_service.init_local.return_value = {
+                "success": True,
+                "storage": "local",
+                "config_dir": str(tmp_path),
+                "files_copied": 3,
+                "icloud_dir": str(tmp_path / "icloud"),
+            }
+            cmd_init(args)
+
+        captured = capsys.readouterr()
+        assert "local storage" in captured.out.lower()
+
+    def test_local_json_output(self, tmp_path, capsys):
+        """--local --json output format."""
+        from macsetup.cli import cmd_init
+
+        args = argparse.Namespace(
+            resolved_config_dir=tmp_path,
+            icloud=False,
+            local=True,
+            status=False,
+            force=False,
+            json=True,
+            quiet=False,
+        )
+
+        with patch("macsetup.services.init.InitService") as mock_cls:
+            mock_service = mock_cls.return_value
+            mock_service.init_local.return_value = {
+                "success": True,
+                "storage": "local",
+                "config_dir": str(tmp_path),
+                "files_copied": 3,
+                "icloud_dir": str(tmp_path / "icloud"),
+            }
+            cmd_init(args)
+
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        assert output["storage"] == "local"
+        assert output["success"] is True
+
+    def test_local_exit_code_1_when_no_pointer(self, tmp_path):
+        """Exit code 1 when no pointer file exists."""
+        from macsetup.cli import cmd_init
+
+        args = argparse.Namespace(
+            resolved_config_dir=tmp_path,
+            icloud=False,
+            local=True,
+            status=False,
+            force=False,
+            json=False,
+            quiet=True,
+        )
+
+        with patch("macsetup.services.init.InitService") as mock_cls:
+            mock_service = mock_cls.return_value
+            mock_service.init_local.return_value = {
+                "success": False,
+                "error": "not_using_icloud",
+                "message": "Not currently using iCloud storage (no pointer file)",
+            }
+            result = cmd_init(args)
+
+        assert result == 1
